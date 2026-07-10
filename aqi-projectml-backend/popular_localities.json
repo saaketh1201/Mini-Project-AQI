@@ -1,0 +1,38 @@
+{
+  "mumbai": [
+    {"name": "South Mumbai", "lat": 18.9433, "lon": 72.8238},
+    {"name": "Bandra", "lat": 19.0544, "lon": 72.8408},
+    {"name": "Andheri", "lat": 19.1196, "lon": 72.8460},
+    {"name": "Borivali", "lat": 19.2290, "lon": 72.8567},
+    {"name": "Goregaon", "lat": 19.1460, "lon": 72.8416},
+    {"name": "Dadar", "lat": 19.0180, "lon": 72.8446},
+    {"name": "Kurla", "lat": 19.0636, "lon": 72.8792},
+    {"name": "Malad", "lat": 19.1916, "lon": 72.8562},
+    {"name": "Vikhroli", "lat": 19.0942, "lon": 72.9508},
+    {"name": "Chembur", "lat": 19.0526, "lon": 72.9006}
+  ],
+  "delhi": [
+    {"name": "Central Delhi", "lat": 28.6448, "lon": 77.2167},
+    {"name": "Connaught Place", "lat": 28.6335, "lon": 77.2197},
+    {"name": "Karol Bagh", "lat": 28.6506, "lon": 77.1887},
+    {"name": "Dwarka", "lat": 28.5750, "lon": 77.0200},
+    {"name": "Saket", "lat": 28.5245, "lon": 77.2120},
+    {"name": "Rohini", "lat": 28.7237, "lon": 77.0999},
+    {"name": "Pitampura", "lat": 28.7017, "lon": 77.1325},
+    {"name": "Noida Sector 18", "lat": 28.5700, "lon": 77.3240},
+    {"name": "Nehru Place", "lat": 28.5494, "lon": 77.2640},
+    {"name": "Anand Vihar", "lat": 28.6519, "lon": 77.3159}
+  ],
+  "pune": [
+    {"name": "Kothrud", "lat": 18.4940, "lon": 73.8233},
+    {"name": "Shivajinagar", "lat": 18.5277, "lon": 73.8478},
+    {"name": "Hadapsar", "lat": 18.4904, "lon": 73.9339},
+    {"name": "Kalyani Nagar", "lat": 18.5486, "lon": 73.9036},
+    {"name": "Baner", "lat": 18.5570, "lon": 73.7820},
+    {"name": "Aundh", "lat": 18.5573, "lon": 73.8053},
+    {"name": "Wakad", "lat": 18.5765, "lon": 73.7250},
+    {"name": "Pimpri", "lat": 18.6265, "lon": 73.7997},
+    {"name": "Chinchwad", "lat": 18.6298, "lon": 73.7997},
+    {"name": "Kharadi", "lat": 18.5369, "lon": 73.9543}
+  ]
+}

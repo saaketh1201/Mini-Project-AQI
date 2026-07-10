@@ -1,0 +1,93 @@
+# Windows batch scripts
+*.bat
+
+# Node modules and JavaScript
+node_modules/
+build/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+coverage/
+
+# Python and ML
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+
+# IDE and Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Temporary and Cache Files
+*.log
+*.tmp
+.pytest_cache/
+.eslintcache
+.cache/
+
+# Frontend Build Artifacts (can be regenerated from npm install && npm build)
+aqi-app/node_modules/
+aqi-app/build/
+aqi-app/.pnp
+aqi-app/.pnp.js
+
+# Backend Cache (can be regenerated)
+aqi-projectml-backend/__pycache__/
+aqi-projectml-backend/*.pyc
+aqi-projectml-backend/.pytest_cache/
+
+# Note: All removed files and directories are regeneratable via:
+# Frontend: npm install && npm run build
+# Backend: pip install -r requirements.txt
+.flaskenv
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints

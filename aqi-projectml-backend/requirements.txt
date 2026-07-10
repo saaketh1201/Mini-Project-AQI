@@ -1,0 +1,12 @@
+flask
+flask-cors
+python-dotenv
+geopy
+requests
+reportlab
+pandas
+prophet
+scikit-learn
+Flask-Compress
+pytest
+requests-mock
