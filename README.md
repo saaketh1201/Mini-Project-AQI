@@ -42,6 +42,14 @@ npm start
 
 The frontend reads the API base URL from the `REACT_APP_API_BASE_URL` environment variable. If not set, it falls back to the local backend default.
 
+### Deploying to Vercel
+
+1. Push this frontend app to a Vercel project.
+2. Set the environment variable:
+   - `REACT_APP_API_BASE_URL=https://your-backend-url` (for example, your Render or other hosted Flask API)
+3. Use the default CRA build settings with Vercel.
+4. Ensure the backend is publicly reachable and CORS is enabled for the Vercel domain.
+
 ## Backend Setup
 
 ```bash

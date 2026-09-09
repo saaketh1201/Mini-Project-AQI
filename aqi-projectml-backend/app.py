@@ -26,6 +26,22 @@ import threading
 base_dir = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(base_dir, ".env"))
 
+
+def _safe_cache_path(filename):
+    candidates = [
+        os.path.join(base_dir, filename),
+        os.path.join('/tmp', filename),
+    ]
+    for path in candidates:
+        try:
+            directory = os.path.dirname(path)
+            if directory and os.path.isdir(directory):
+                if os.access(directory, os.W_OK):
+                    return path
+        except Exception:
+            pass
+    return os.path.join('/tmp', filename)
+
 # Load curated popular localities for major cities to improve nearby fallback
 POPULAR_LOCALITIES = {}
 try:
@@ -53,13 +69,13 @@ if Compress:
 else:
     print("flask_compress not installed; responses will not be compressed. To enable, run: pip install Flask-Compress")
 
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Server-side TTL cache (5 minutes)
 CACHE = cachetools.TTLCache(maxsize=1000, ttl=300)
 
 # Persistent response cache file for deterministic lookup and tracing
-RESPONSE_CACHE_FILE = os.path.join(base_dir, "aqi_response_cache.json")
+RESPONSE_CACHE_FILE = _safe_cache_path("aqi_response_cache.json")
 RESPONSE_CACHE = {}
 
 # In-flight deduplication map: cache_key -> Future
@@ -153,7 +169,7 @@ def _stringify_context_value(value):
     return str(value).strip() or None
 
 
-HYDERABAD_LOCALITY_CACHE_FILE = os.path.join(base_dir, "hyderabad_locality_cache.json")
+HYDERABAD_LOCALITY_CACHE_FILE = _safe_cache_path("hyderabad_locality_cache.json")
 HYDERABAD_LOCALITY_CACHE = {}
 
 
@@ -281,7 +297,7 @@ GLOBAL_HEATMAP_CITIES = [
     {"city": "Mexico City", "lat": 19.4326, "lon": -99.1332},
 ]
 
-GLOBAL_HEATMAP_CACHE_FILE = os.path.join(base_dir, "global_heatmap_cache.json")
+GLOBAL_HEATMAP_CACHE_FILE = _safe_cache_path("global_heatmap_cache.json")
 GLOBAL_HEATMAP_CACHE = []
 
 
