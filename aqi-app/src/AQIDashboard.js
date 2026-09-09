@@ -29,10 +29,21 @@ const PrimaryDriverCard = React.memo(function PrimaryDriverCard({ risk, composit
 });
 
 const DominantPollutantCard = React.memo(function DominantPollutantCard({ composition }) {
-  const entries = Object.entries(composition || {}).filter(([,v]) => v != null);
-  const dom = entries.sort((a,b)=> (b[1] - a[1]))[0] || [];
+  const thresholds = {
+    pm2_5: 12,
+    pm10: 54,
+    no2: 100,
+    so2: 196,
+    o3: 140,
+    co: 10000,
+    nh3: 100,
+  };
+  const entries = Object.entries(composition || {})
+    .filter(([key, value]) => value != null && Number.isFinite(Number(value)))
+    .map(([key, value]) => [key, Number(value) / (thresholds[key] || 1)]);
+  const dom = entries.sort((a, b) => (b[1] - a[1]))[0] || [];
   const label = dom[0] ? (dom[0] === 'pm2_5' ? 'PM2.5' : dom[0].toUpperCase()) : '—';
-  const val = dom[1] || '—';
+  const val = dom[1] ? (composition?.[dom[0]] ?? 0) : '—';
   return (
     <div className="eid-card">
       <div className="eyebrow">Dominant Pollutant</div>
@@ -345,7 +356,12 @@ export default function AQIDashboard({ city, onCityChange }) {
     healthRecommendation: narrative.prescriptive || analytics?.prescriptive || "Follow standard precautions.",
     decisionSupport: aiSummary,
     weatherSummary: data.weather ? `Humidity ${data.weather.humidity ?? "—"}% · Wind ${data.weather.wind_speed ?? "—"} km/h` : risk.weather || "Weather summary unavailable",
-    forecastSummary: data.forecast?.length ? `Next 48 hours forecast range ${Math.min(...data.forecast.map((p) => p.y || 0))}–${Math.max(...data.forecast.map((p) => p.y || 0))} µg/m³` : "Forecast summary unavailable",
+    forecastSummary: data.forecast?.length ? (() => {
+      const values = data.forecast
+        .map((p) => Number(p?.y ?? p?.yhat ?? 0))
+        .filter((value) => Number.isFinite(value));
+      return values.length ? `Next 48 hours forecast range ${Math.min(...values)}–${Math.max(...values)} µg/m³` : "Forecast summary unavailable";
+    })() : "Forecast summary unavailable",
     cleanestAreas,
     pollutedAreas,
   };

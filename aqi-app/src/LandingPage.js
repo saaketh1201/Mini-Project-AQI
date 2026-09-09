@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import { getCitySuggestions } from "./services/api";
+import { getCitySuggestions, getRanking } from "./services/api";
 
 const FEATURED_CITIES = [
   "Delhi", "Jakarta", "Beijing", "Hyderabad", "Santiago",
@@ -104,15 +103,12 @@ export default function LandingPage({ onSearch, theme, toggleTheme }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    axios
-      .get("/aqi-ranking")
+    getRanking()
       .then((res) => {
-        setRankingData(res.data || []);
+        setRankingData(Array.isArray(res) ? res : []);
         setRankingLoading(false);
       })
       .catch(() => {
-        // If the backend is not running (dev) or the request fails,
-        // fall back to a small sample so the UI remains informative.
         setRankingData(SAMPLE_RANKING);
         setRankingLoading(false);
       });

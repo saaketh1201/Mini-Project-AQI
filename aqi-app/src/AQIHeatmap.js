@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import axios from "axios";
 import { HeatmapLayer } from "react-leaflet-heatmap-layer-v3";
+import { getRanking } from "./services/api";
 
 function getAQIColor(aqi) {
   if (aqi <= 50)  return "#22C55E";
@@ -70,10 +70,9 @@ export default function AQIHeatmap({ fullscreen = false }) {
   const [showMarkers, setShowMarkers] = useState(true);
 
   useEffect(() => {
-    axios
-      .get("/aqi-heatmap")
+    getRanking()
       .then((res) => {
-        const formatted = (res.data || [])
+        const formatted = (Array.isArray(res) ? res : [])
           .filter((item) => item.aqi != null)
           .map((item) => ({ ...item, intensity: Math.min(item.aqi / 300, 1) }));
         setPoints(formatted);

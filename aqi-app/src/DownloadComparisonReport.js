@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "./services/api";
 
 export default function DownloadComparisonReport({ city1, city2 }) {
   const [loading, setLoading] = useState(false);
@@ -8,7 +8,7 @@ export default function DownloadComparisonReport({ city1, city2 }) {
     if (loading) return;
     setLoading(true);
     try {
-      const response = await axios.get(
+      const response = await api.get(
         `/report/compare?city1=${encodeURIComponent(city1)}&city2=${encodeURIComponent(city2)}`,
         { responseType: "blob" }
       );

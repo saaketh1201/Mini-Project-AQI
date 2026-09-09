@@ -52,3 +52,9 @@ def test_search_cities_autocomplete(client, monkeypatch):
     assert resp.status_code == 200
     data = resp.get_json()
     assert data == ["Delhi", "Deli", "Delphi"]
+
+
+def test_dominant_pollutant_uses_normalized_severity(monkeypatch):
+    components = {"no2": 180, "pm2_5": 80, "pm10": 40}
+    risk = backend_app.build_environmental_risk_snapshot(components, 150, history=[], forecast=[])
+    assert risk["dominant_pollutant"]["key"] == "pm2_5"

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
 import AQICategory from "./AQICategory";
+import api from "./services/api";
 import SkeletonCard from "./SkeletonCard";
 import DownloadReport from "./DownloadReport";
 import DownloadComparisonReport from "./DownloadComparisonReport";
@@ -147,7 +147,7 @@ export default function CompareCities() {
     setError("");
     setLoading(true);
     setData(null);
-    axios
+    api
       .get(`/compare?city1=${encodeURIComponent(city1)}&city2=${encodeURIComponent(city2)}`)
       .then((res) => { setData(res.data); setLoading(false); })
       .catch(() => { setError("Comparison failed. Please try again."); setLoading(false); });

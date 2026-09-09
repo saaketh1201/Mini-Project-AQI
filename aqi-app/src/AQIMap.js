@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import axios from "axios";
+import { getRanking } from "./services/api";
 
 function AQIMap() {
   const [cities, setCities] = useState([]);
 
   useEffect(() => {
-    axios.get("/aqi-ranking").then((res) => setCities(res.data));
+    getRanking().then((res) => setCities(Array.isArray(res) ? res : [])).catch(() => setCities([]));
   }, []);
 
   const getMarkerColor = (aqi) => {

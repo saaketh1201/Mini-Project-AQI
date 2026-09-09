@@ -73,6 +73,7 @@ def build_environmental_risk_snapshot(components, aqi_value, history=None, forec
     Enhanced ERS with location-specific factors: industrial influence, traffic, water bodies.
     """
     dominant_pollutant = None
+    dominant_ratio = 0.0
     dominant_value = 0.0
 
     if components:
@@ -80,16 +81,17 @@ def build_environmental_risk_snapshot(components, aqi_value, history=None, forec
             if value is None:
                 continue
             threshold = THRESHOLDS.get(pollutant, 1)
-            if threshold and value / threshold > dominant_value:
+            ratio = (float(value) / threshold) if threshold else 0.0
+            if ratio > dominant_ratio:
                 dominant_pollutant = pollutant
-                dominant_value = value
+                dominant_ratio = ratio
+                dominant_value = float(value)
 
     dominant_label = POLLUTANT_LABELS.get(dominant_pollutant, dominant_pollutant.upper() if dominant_pollutant else "PM2.5")
 
-    dominant_ratio = 0.0
-    if dominant_pollutant:
-        threshold = THRESHOLDS.get(dominant_pollutant, 1)
-        dominant_ratio = (dominant_value / threshold) if threshold else 0.0
+    if dominant_pollutant is None:
+        dominant_ratio = 0.0
+        dominant_value = 0.0
 
     # ─ Enhanced ERS scoring with location-specific factors ────────────────
     aqi_component = _normalize_metric(aqi_value, 500.0)
@@ -148,19 +150,23 @@ def build_environmental_risk_snapshot(components, aqi_value, history=None, forec
     if forecast and len(forecast) > 1:
         first_val = forecast[0].get("yhat", forecast[0].get("y", 0)) or 0
         last_val = forecast[-1].get("yhat", forecast[-1].get("y", 0)) or 0
-        if last_val > first_val * 1.1:
-            trend = f"Worsening ({round(((last_val - first_val) / first_val) * 100, 1)}%)"
-        elif last_val < first_val * 0.9:
-            trend = f"Improving ({round(((last_val - first_val) / first_val) * 100, 1)}%)"
+        if first_val > 0:
+            change_pct = ((last_val - first_val) / first_val) * 100.0
+            if last_val > first_val * 1.1:
+                trend = f"Worsening ({round(change_pct, 1)}%) — pollution is rising and risk is increasing"
+            elif last_val < first_val * 0.9:
+                trend = f"Improving ({round(change_pct, 1)}%) — pollution is falling and risk is decreasing"
+            else:
+                trend = f"Stable ({round(change_pct, 1)}%)"
         else:
-            trend = "Stable"
+            trend = "Trend data is limited"
     elif history and len(history) > 1:
         first_val = history[0].get("y", 0) or 0
         last_val = history[-1].get("y", 0) or 0
         if last_val > first_val * 1.05:
-            trend = "Rising over the recent window"
+            trend = "Rising over the recent window — risk is worsening"
         elif last_val < first_val * 0.95:
-            trend = "Falling over the recent window"
+            trend = "Falling over the recent window — risk is improving"
         else:
             trend = "Broadly stable"
     else:
@@ -213,10 +219,22 @@ def build_ai_summary(components, aqi_value, weather, risk_snapshot, city_name=No
     city_text = f" in {city_name}" if city_name else ""
     category = _aqi_category(aqi_value)
 
-    summary = (
-        f"Air quality{city_text} is currently {aqi_value} on the US AQI scale ({category}), "
-        f"driven mainly by elevated {pollutant}."
-    )
+    trend_text = str(risk_snapshot.get('trend', 'stable')).lower()
+    if 'worsening' in trend_text or 'rising' in trend_text:
+        summary = (
+            f"Air quality{city_text} is currently {aqi_value} on the US AQI scale ({category}), "
+            f"with pollution rising and the overall risk worsening as elevated {pollutant} persists."
+        )
+    elif 'improving' in trend_text or 'falling' in trend_text:
+        summary = (
+            f"Air quality{city_text} is currently {aqi_value} on the US AQI scale ({category}), "
+            f"with pollution easing and the overall risk improving as elevated {pollutant} decreases."
+        )
+    else:
+        summary = (
+            f"Air quality{city_text} is currently {aqi_value} on the US AQI scale ({category}), "
+            f"driven mainly by elevated {pollutant}."
+        )
     if humidity is not None or wind_speed is not None:
         summary += " "
         if humidity is not None:

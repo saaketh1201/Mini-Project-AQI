@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "./services/api";
 import { createAerisReport, exportReportCsv } from "./reportUtils";
 
 export default function DownloadReport({ city, reportData, buttonLabel = "Download Report", csvLabel = "Export CSV" }) {
@@ -9,7 +9,7 @@ export default function DownloadReport({ city, reportData, buttonLabel = "Downlo
     if (loading) return;
     setLoading(true);
     try {
-      const response = await axios.get(`/report/${encodeURIComponent(city)}`, {
+      const response = await api.get(`/report/${encodeURIComponent(city)}`, {
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
