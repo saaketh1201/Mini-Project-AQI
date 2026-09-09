@@ -66,12 +66,57 @@ RESPONSE_CACHE = {}
 IN_FLIGHT = {}
 
 
+def _is_fake_or_unusable_source(source):
+    text = str(source or "").lower()
+    return any(marker in text for marker in ("mock", "demo", "live data unavailable", "no_data"))
+
+
+def _sanitize_response_cache_item(value):
+    if not isinstance(value, dict):
+        return None
+
+    source = str(value.get("source") or "").lower()
+    if _is_fake_or_unusable_source(source):
+        return None
+
+    localities = value.get("localities")
+    if isinstance(localities, list):
+        cleaned = []
+        for item in localities:
+            if not isinstance(item, dict):
+                continue
+            item_source = str(item.get("source") or "").lower()
+            aqi = item.get("aqi")
+            if aqi is None or _is_fake_or_unusable_source(item_source):
+                continue
+            cleaned.append(item)
+        value["localities"] = cleaned
+        if not cleaned and value.get("source") == "no_data":
+            return None
+
+    if isinstance(value.get("aqi"), (int, float)) and value.get("aqi") is not None and "mock" not in source and "demo" not in source:
+        return value
+
+    if "localities" in value:
+        return value
+
+    return None
+
+
 def load_response_cache():
     global RESPONSE_CACHE
     try:
         if os.path.exists(RESPONSE_CACHE_FILE):
             with open(RESPONSE_CACHE_FILE, "r", encoding="utf-8") as f:
-                RESPONSE_CACHE = json.load(f)
+                raw = json.load(f)
+                sanitized = {}
+                for key, value in (raw or {}).items():
+                    cleaned = _sanitize_response_cache_item(value)
+                    if cleaned is not None:
+                        sanitized[key] = cleaned
+                RESPONSE_CACHE = sanitized
+        else:
+            RESPONSE_CACHE = {}
     except Exception as e:
         print(f"Warning: could not load response cache file: {e}")
         RESPONSE_CACHE = {}
@@ -79,14 +124,67 @@ def load_response_cache():
 
 def save_response_cache():
     try:
+        cleaned = {}
+        for key, value in RESPONSE_CACHE.items():
+            item = _sanitize_response_cache_item(value)
+            if item is not None:
+                cleaned[key] = item
         with open(RESPONSE_CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(RESPONSE_CACHE, f, ensure_ascii=False, indent=2)
+            json.dump(cleaned, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Warning: could not save response cache file: {e}")
 
 
+def _stringify_context_value(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, dict):
+        for key in ("summary", "text", "description", "context"):
+            text = value.get(key)
+            if text is not None:
+                return _stringify_context_value(text)
+        return "Environmental context is available for this locality."
+    if isinstance(value, (list, tuple)):
+        cleaned = [_stringify_context_value(item) for item in value]
+        cleaned = [item for item in cleaned if item]
+        return " ".join(cleaned) if cleaned else None
+    return str(value).strip() or None
+
+
+HYDERABAD_LOCALITY_CACHE_FILE = os.path.join(base_dir, "hyderabad_locality_cache.json")
+HYDERABAD_LOCALITY_CACHE = {}
+
+
+def load_hyderabad_locality_cache():
+    global HYDERABAD_LOCALITY_CACHE
+    try:
+        if os.path.exists(HYDERABAD_LOCALITY_CACHE_FILE):
+            with open(HYDERABAD_LOCALITY_CACHE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f) or {}
+                if isinstance(data, dict):
+                    HYDERABAD_LOCALITY_CACHE = data
+                else:
+                    HYDERABAD_LOCALITY_CACHE = {}
+        else:
+            HYDERABAD_LOCALITY_CACHE = {}
+    except Exception as e:
+        print(f"Warning: could not load Hyderabad locality cache: {e}")
+        HYDERABAD_LOCALITY_CACHE = {}
+
+
+def save_hyderabad_locality_cache():
+    try:
+        with open(HYDERABAD_LOCALITY_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(HYDERABAD_LOCALITY_CACHE, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Warning: could not save Hyderabad locality cache: {e}")
+
+
 # Load persistent cache data if available
 load_response_cache()
+load_hyderabad_locality_cache()
 
 # Shared ThreadPoolExecutor for parallel fetches
 EXECUTOR = ThreadPoolExecutor(max_workers=8)
@@ -138,6 +236,79 @@ HEATMAP_CITIES = [
 # Deduplicate cities for the background fetcher
 BACKGROUND_CITIES = list(set([c.strip().lower() for c in RANKING_CITIES + HEATMAP_CITIES]))
 BACKGROUND_CACHE = {}
+
+GLOBAL_HEATMAP_CITIES = [
+    {"city": "Delhi", "lat": 28.6139, "lon": 77.2090},
+    {"city": "Mumbai", "lat": 19.0760, "lon": 72.8777},
+    {"city": "Kolkata", "lat": 22.5726, "lon": 88.3639},
+    {"city": "Chennai", "lat": 13.0827, "lon": 80.2707},
+    {"city": "Hyderabad", "lat": 17.3850, "lon": 78.4867},
+    {"city": "Bangalore", "lat": 12.9716, "lon": 77.5946},
+    {"city": "Lahore", "lat": 31.5204, "lon": 74.3587},
+    {"city": "Karachi", "lat": 24.8607, "lon": 67.0011},
+    {"city": "Dhaka", "lat": 23.8103, "lon": 90.4125},
+    {"city": "Kathmandu", "lat": 27.7172, "lon": 85.3240},
+    {"city": "Beijing", "lat": 39.9042, "lon": 116.4074},
+    {"city": "Shanghai", "lat": 31.2304, "lon": 121.4737},
+    {"city": "Chengdu", "lat": 30.5728, "lon": 104.0668},
+    {"city": "Wuhan", "lat": 30.5928, "lon": 114.3055},
+    {"city": "Xi'an", "lat": 34.3416, "lon": 108.9398},
+    {"city": "Tokyo", "lat": 35.6762, "lon": 139.6503},
+    {"city": "Seoul", "lat": 37.5665, "lon": 126.9780},
+    {"city": "Jakarta", "lat": -6.2088, "lon": 106.8456},
+    {"city": "Bangkok", "lat": 13.7563, "lon": 100.5018},
+    {"city": "Ho Chi Minh City", "lat": 10.8231, "lon": 106.6297},
+    {"city": "Cairo", "lat": 30.0444, "lon": 31.2357},
+    {"city": "Lagos", "lat": 6.5244, "lon": 3.3792},
+    {"city": "Nairobi", "lat": -1.2864, "lon": 36.8172},
+    {"city": "Moscow", "lat": 55.7558, "lon": 37.6173},
+    {"city": "London", "lat": 51.5072, "lon": -0.1276},
+    {"city": "Paris", "lat": 48.8566, "lon": 2.3522},
+    {"city": "Berlin", "lat": 52.5200, "lon": 13.4050},
+    {"city": "Warsaw", "lat": 52.2297, "lon": 21.0122},
+    {"city": "Los Angeles", "lat": 34.0522, "lon": -118.2437},
+    {"city": "New York", "lat": 40.7128, "lon": -74.0060},
+    {"city": "Mexico City", "lat": 19.4326, "lon": -99.1332},
+    {"city": "Santiago", "lat": -33.4489, "lon": -70.6693},
+    {"city": "São Paulo", "lat": -23.5505, "lon": -46.6333},
+    {"city": "Buenos Aires", "lat": -34.6037, "lon": -58.3816},
+    {"city": "Dubai", "lat": 25.2048, "lon": 55.2708},
+    {"city": "Riyadh", "lat": 24.7136, "lon": 46.6753},
+    {"city": "Tehran", "lat": 35.6892, "lon": 51.3890},
+    {"city": "Istanbul", "lat": 41.0082, "lon": 28.9784},
+    {"city": "Singapore", "lat": 1.3521, "lon": 103.8198},
+    {"city": "Johannesburg", "lat": -26.2041, "lon": 28.0473},
+    {"city": "Mexico City", "lat": 19.4326, "lon": -99.1332},
+]
+
+GLOBAL_HEATMAP_CACHE_FILE = os.path.join(base_dir, "global_heatmap_cache.json")
+GLOBAL_HEATMAP_CACHE = []
+
+
+def load_global_heatmap_cache():
+    global GLOBAL_HEATMAP_CACHE
+    try:
+        if os.path.exists(GLOBAL_HEATMAP_CACHE_FILE):
+            with open(GLOBAL_HEATMAP_CACHE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f) or []
+                GLOBAL_HEATMAP_CACHE = data if isinstance(data, list) else []
+        else:
+            GLOBAL_HEATMAP_CACHE = []
+    except Exception as e:
+        print(f"Warning: could not load global heatmap cache: {e}")
+        GLOBAL_HEATMAP_CACHE = []
+
+
+def save_global_heatmap_cache(data):
+    try:
+        with open(GLOBAL_HEATMAP_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Warning: could not save global heatmap cache: {e}")
+
+
+load_global_heatmap_cache()
+
 
 def background_data_collector():
     last_429_report = 0
@@ -362,7 +533,8 @@ def determine_aqi(components, main_aqi_index=None, source=None):
         except (TypeError, ValueError):
             pass
 
-    return compute_aqi(components)
+    computed = compute_aqi(components)
+    return None if computed is None else int(computed)
 
 
 def aqi_category(aqi):
@@ -428,8 +600,13 @@ def health_recommendations(aqi):
 
 @cachetools.cached(cache=cachetools.TTLCache(maxsize=1024, ttl=3600))
 def get_city_coords(city):
+    if city is None:
+        return None, None
+    query = str(city).strip()
+    if not query:
+        return None, None
     geolocator = Nominatim(user_agent="aeris_environmental_platform")
-    location = geolocator.geocode(city)
+    location = geolocator.geocode(query)
     if location:
         return location.latitude, location.longitude
     return None, None
@@ -439,8 +616,8 @@ def fetch_iqair_city_data(lat, lon):
     if not IQAIR_API_KEY:
         raise ValueError("IQAIR_API_KEY is not configured")
     url = f"https://api.airvisual.com/v2/nearest_city?lat={lat}&lon={lon}&key={IQAIR_API_KEY}"
-    max_retries = 4
-    backoff = 1.0
+    max_retries = 2
+    backoff = 0.5
     for attempt in range(1, max_retries + 1):
         try:
             resp = requests.get(url, timeout=REQUEST_TIMEOUT)
@@ -450,28 +627,22 @@ def fetch_iqair_city_data(lat, lon):
                     raise ValueError("Invalid IQAir API response")
                 return data["data"]
 
-            # Handle rate limiting with exponential backoff
             if resp.status_code == 429:
-                wait = backoff + random.uniform(0, backoff)
                 if attempt == max_retries:
                     raise requests.exceptions.RequestException(f"IQAir API returned 429")
-                time.sleep(wait)
+                time.sleep(backoff)
                 backoff *= 2
                 continue
 
-            # Other non-200 responses
             resp.raise_for_status()
 
-        except requests.exceptions.RequestException as e:
-            # transient network error or HTTP error - retry with backoff
+        except requests.exceptions.RequestException:
             if attempt == max_retries:
                 raise
-            wait = backoff + random.uniform(0, backoff)
-            time.sleep(wait)
+            time.sleep(backoff)
             backoff *= 2
             continue
 
-    # If we exit loop without returning, raise
     raise requests.exceptions.RequestException("Failed to fetch IQAir data after retries")
 
 
@@ -668,12 +839,9 @@ def fetch_current_aqi_data(lat, lon, city_name=None):
         except Exception:
             pass
 
-    # Final fallback: return deterministic mock values so the server remains usable in dev.
-    seed = int((abs(lat) + abs(lon)) * 1000) % 100
-    pm25 = 10 + (seed % 120)
-    components = {"pm2_5": pm25, "pm10": pm25 * 1.8, "no2": 30, "so2": 5, "o3": 20, "co": 2000}
-    main_index = 1 if pm25 <= 12 else 2 if pm25 <= 35 else 3 if pm25 <= 55 else 4 if pm25 <= 150 else 5
-    return {"components": components, "main": {"aqi": main_index}, "source": "Mock fallback"}
+    # Final fallback: do not invent AQI values. If live providers fail, keep the response
+    # as a no-data condition rather than ranking fake values as legitimate air quality.
+    return {"components": {}, "main": {"aqi": None}, "source": "Live data unavailable"}
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────────
@@ -820,13 +988,14 @@ def aqi_ranking():
         for city in RANKING_CITIES:
             normalized = city.strip().lower()
             if normalized in BACKGROUND_CACHE:
-                # Use the original capitalized name but data from cache
                 data = dict(BACKGROUND_CACHE[normalized])
-                data["name"] = city
-                results.append(data)
+                if data.get("aqi") is not None:
+                    data["name"] = city
+                    results.append(data)
 
         # Sort by live AQI descending and return the top 20 cities.
-        results.sort(key=lambda x: x.get("aqi", 0), reverse=True)
+        results = [item for item in results if item.get("aqi") is not None]
+        results.sort(key=lambda x: float(x.get("aqi", 0) or 0), reverse=True)
         top = results[:20]
         CACHE[cache_key] = top
         return top
@@ -856,38 +1025,56 @@ def compare_cities():
             lat, lon = get_city_coords(city)
             if not lat or not lon:
                 return {"error": f"Location '{city}' not found"}
+
             aqi_data = fetch_current_aqi_data(lat, lon, city_name=city)
             components = aqi_data.get("components", {})
             source_name = aqi_data.get("source", "Unknown")
             aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
-            history = fetch_openmeteo_history(lat, lon)
+
             weather = fetch_openmeteo_weather(lat, lon)
-            forecast, metrics = train_and_predict_pm25(history) if history else ([], {})
-            
-            # Build consolidated analytics with location context
-            narrative = build_analytics(components, aqi_value, city_name=city, lat=lat, lon=lon, history=history, forecast=forecast)
-            risk = build_environmental_risk_snapshot(components, aqi_value, history, forecast, source_name, city_name=city, lat=lat, lon=lon)
+            history = []
+            forecast = []
+            metrics = {}
+
+            narrative = build_analytics(
+                components,
+                aqi_value,
+                city_name=city,
+                lat=lat,
+                lon=lon,
+                history=history,
+                forecast=forecast,
+            )
+            risk = build_environmental_risk_snapshot(
+                components,
+                aqi_value,
+                history,
+                forecast,
+                source_name,
+                city_name=city,
+                lat=lat,
+                lon=lon,
+            )
             ai_summary = build_ai_summary(components, aqi_value, weather, risk, city_name=city, lat=lat, lon=lon)
             kpis = build_dashboard_kpis(aqi_value, risk.get("score", 0), city_name=city)
-            
-            analytics = {
-                "narrative": narrative,
-                "risk": risk,
-                "summary": ai_summary,
-                "kpis": kpis,
-            }
-            
+
             return {
-                "city":        city,
-                "lat":         lat,
-                "lon":         lon,
-                "aqi":         aqi_value,
+                "city": city,
+                "lat": lat,
+                "lon": lon,
+                "aqi": aqi_value,
                 "composition": components,
-                "category":    aqi_category(aqi_value),
-                "analytics":   analytics,
-                "metrics":     metrics,
-                "weather":     weather,
-                "updatedAt":   datetime.utcnow().isoformat(),
+                "category": aqi_category(aqi_value),
+                "source": source_name,
+                "analytics": {
+                    "narrative": narrative,
+                    "risk": risk,
+                    "summary": ai_summary,
+                    "kpis": kpis,
+                },
+                "metrics": metrics,
+                "weather": weather,
+                "updatedAt": datetime.utcnow().isoformat(),
             }
         except Exception as e:
             return {"error": f"Failed to fetch data for {city}: {str(e)}"}
@@ -901,23 +1088,57 @@ def _fetch_single_city_aqi(city):
         if not lat or not lon:
             return None
         aqi_data = fetch_current_aqi_data(lat, lon)
-        components = aqi_data.get("components", {})
+        components = aqi_data.get("components", {}) or {}
         source_name = aqi_data.get("source", "Unknown")
         aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
-        if aqi_value is None:
+        if aqi_value is None or source_name.lower().find("mock") >= 0 or source_name.lower().find("live data unavailable") >= 0:
             return None
         return {"name": city, "lat": lat, "lon": lon, "aqi": aqi_value, "source": source_name}
     except Exception:
         return None
 
+def _build_global_heatmap_snapshot():
+    snapshot = []
+    for item in GLOBAL_HEATMAP_CITIES:
+        city = item.get("city")
+        lat = item.get("lat")
+        lon = item.get("lon")
+        if not city or lat is None or lon is None:
+            continue
+        try:
+            aqi_data = fetch_current_aqi_data(float(lat), float(lon), city_name=city)
+            source_name = aqi_data.get("source", "Unknown")
+            if source_name and any(marker in str(source_name).lower() for marker in ("mock", "demo", "live data unavailable")):
+                continue
+            components = aqi_data.get("components", {}) or {}
+            aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
+            if aqi_value is None:
+                continue
+            snapshot.append({
+                "city": city,
+                "name": city,
+                "lat": float(lat),
+                "lon": float(lon),
+                "aqi": int(aqi_value),
+                "source": source_name,
+                "updatedAt": datetime.utcnow().isoformat(),
+            })
+        except Exception:
+            continue
+
+    if snapshot:
+        snapshot = sorted(snapshot, key=lambda x: float(x.get("aqi", 0) or 0), reverse=True)
+        GLOBAL_HEATMAP_CACHE[:] = snapshot
+        save_global_heatmap_cache(snapshot)
+    return snapshot
+
+
 @app.route("/aqi-heatmap", methods=["GET"])
 def aqi_heatmap():
     cache_key = "aqi_heatmap"
-    # Return cached payload immediately when available
     if cache_key in CACHE:
         return jsonify(CACHE[cache_key])
 
-    # Deduplicate concurrent requests
     if cache_key in IN_FLIGHT:
         try:
             payload = IN_FLIGHT[cache_key].result(timeout=10)
@@ -927,21 +1148,28 @@ def aqi_heatmap():
 
     def _build_heatmap():
         results = []
-        for city in HEATMAP_CITIES:
-            normalized = city.strip().lower()
-            if normalized in BACKGROUND_CACHE:
-                data = dict(BACKGROUND_CACHE[normalized])
-                data["name"] = city
-                results.append(data)
-
-        results.sort(key=lambda x: x.get("aqi", 0), reverse=True)
+        if GLOBAL_HEATMAP_CACHE:
+            results = [dict(item) for item in GLOBAL_HEATMAP_CACHE if item.get("aqi") is not None]
+        if not results:
+            results = _build_global_heatmap_snapshot()
+        if not results:
+            for city in HEATMAP_CITIES:
+                normalized = city.strip().lower()
+                if normalized in BACKGROUND_CACHE:
+                    data = dict(BACKGROUND_CACHE[normalized])
+                    if data.get("aqi") is not None:
+                        data["city"] = city
+                        data["name"] = city
+                        results.append(data)
+        results = [item for item in results if item.get("aqi") is not None]
+        results.sort(key=lambda x: float(x.get("aqi", 0) or 0), reverse=True)
         CACHE[cache_key] = results
         return results
 
     fut = EXECUTOR.submit(_build_heatmap)
     IN_FLIGHT[cache_key] = fut
     try:
-        payload = fut.result(timeout=15)
+        payload = fut.result(timeout=30)
         return jsonify(payload)
     except Exception as e:
         if cache_key in CACHE:
@@ -1255,6 +1483,88 @@ def _reverse_geocode_city(lat, lon):
     return None
 
 
+def _build_locality_health_advice(name, aqi_value, components, feature_context=None):
+    """Return a locality-specific, pollutant-aware health recommendation."""
+    if aqi_value is None:
+        return {
+            "advice": f"{name} currently has no reliable AQI reading, so avoid assuming outdoor conditions are safe until a fresh update is available.",
+            "best_time": "Wait for fresh data",
+            "risk_group": "Everyone",
+        }
+
+    components = components or {}
+    pm25 = float(components.get("pm2_5") or 0)
+    pm10 = float(components.get("pm10") or 0)
+    no2 = float(components.get("no2") or 0)
+    so2 = float(components.get("so2") or 0)
+    o3 = float(components.get("o3") or 0)
+    co = float(components.get("co") or 0)
+    feature_context = feature_context or {}
+    industrial = bool(feature_context.get("industrial_zones"))
+    traffic = bool(feature_context.get("traffic_corridors"))
+    water = bool(feature_context.get("water_bodies"))
+
+    primary_pollutant = "PM2.5"
+    if pm25 < pm10 and pm10 > 0:
+        primary_pollutant = "PM10"
+    elif no2 >= pm25 and no2 >= pm10:
+        primary_pollutant = "NO₂"
+    elif so2 >= pm25 and so2 >= no2:
+        primary_pollutant = "SO₂"
+    elif o3 >= pm25 and o3 >= no2:
+        primary_pollutant = "O₃"
+    elif co > 1000:
+        primary_pollutant = "CO"
+
+    if aqi_value <= 50:
+        base = f"{name} is currently clean enough for most outdoor activity; keep it light and early in the day for better comfort."
+        best_time = "Morning or evening"
+        risk_group = "General population"
+    elif aqi_value <= 100:
+        base = f"{name} is moderate. Sensitive people should limit long outdoor exercise, especially if the air feels heavy or you are near traffic."
+        best_time = "Early morning"
+        risk_group = "Sensitive groups"
+    elif aqi_value <= 150:
+        base = f"{name} is unhealthy for sensitive groups. Keep outdoor activity short and choose indoor workouts or a properly filtered route."
+        best_time = "Indoor preferred"
+        risk_group = "Children, elderly, asthma patients"
+    elif aqi_value <= 200:
+        base = f"{name} is a high-risk zone for respiratory irritation. Avoid strenuous outdoor activity and keep windows closed when you are indoors."
+        best_time = "Indoor only"
+        risk_group = "Everyone, especially sensitive groups"
+    else:
+        base = f"{name} is in a hazardous AQI range. Outdoor exertion should be avoided, especially for high-risk groups and during peak pollution hours."
+        best_time = "Avoid outdoors"
+        risk_group = "High-risk groups"
+
+    if primary_pollutant == "NO₂" or traffic:
+        base += " This area is strongly shaped by traffic emissions, so avoid long walks or cycling during commute peaks when the road network is busiest."
+    elif primary_pollutant == "SO₂" or industrial:
+        base += " Nearby industrial activity appears to be the dominant influence here, so indoor exercise is the safer option during peak industrial output periods."
+    elif primary_pollutant == "PM10":
+        base += " Coarse particulate pollution is elevated here, which can aggravate irritation and dust exposure; use lighter outdoor activity and avoid dusty routes."
+    elif primary_pollutant == "O₃":
+        base += " Ozone is the dominant driver in this area, so avoid strenuous outdoors around midday and early afternoon when photochemical smog is usually strongest."
+    elif primary_pollutant == "CO":
+        base += " Carbon monoxide is a concern in this area, so avoid prolonged outdoor exertion near busy roads and congested intersections."
+    elif pm25 > 35:
+        base += " Fine particulate matter is the main concern here, so mask use and shorter outdoor exposure are recommended."
+
+    if water and aqi_value <= 100:
+        base += " The nearby water feature may help some local dispersion, but it is not enough to eliminate traffic or industrial risks here."
+
+    if no2 > 50 and traffic:
+        base += " Peak-hour congestion is likely making this area worse for runners, cyclists, and school commutes."
+    if so2 > 25 and industrial:
+        base += " Sulfur dioxide levels suggest a stronger need to reduce outdoor exertion when emissions are peaking."
+
+    return {
+        "advice": base,
+        "best_time": best_time,
+        "risk_group": risk_group,
+    }
+
+
 def _fetch_locality_aqi(locality, origin_lat, origin_lon):
     """Fetch AQI for a single locality dict {name, lat, lon, dist_km}."""
     name = locality["name"]
@@ -1265,7 +1575,7 @@ def _fetch_locality_aqi(locality, origin_lat, origin_lon):
         components = aqi_data.get("components", {}) or {}
         source_name = aqi_data.get("source", "Unknown")
         aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
-        if aqi_value is None:
+        if aqi_value is None or "mock" in str(source_name).lower() or "live data unavailable" in str(source_name).lower():
             return None
 
         dom_key, dom_val = get_dominant_pollutant(components)
@@ -1291,7 +1601,8 @@ def _fetch_locality_aqi(locality, origin_lat, origin_lon):
             land_use_tags.append("Traffic Corridor")
             if not land_use_icon:
                 land_use_icon = "🚗"
-        if feature_context.get("water_bodies"):
+        nearby_water = feature_context.get("water_bodies") or []
+        if nearby_water and all(float(item.get("distance_km", 99)) <= 3.0 for item in nearby_water):
             land_use_tags.append("Water Body")
             land_use_icon = "🌊"
 
@@ -1323,6 +1634,12 @@ def _fetch_locality_aqi(locality, origin_lat, origin_lon):
         if not land_use_icon and locality.get("landUseIcon"):
             land_use_icon = locality.get("landUseIcon")
 
+        narrative_context = analytics_narrative.get("context") if isinstance(analytics_narrative, dict) else getattr(analytics_narrative, "context", None)
+        narrative_diagnostic = analytics_narrative.get("diagnostic") if isinstance(analytics_narrative, dict) else getattr(analytics_narrative, "diagnostic", None)
+        narrative_context = _stringify_context_value(narrative_context)
+        narrative_diagnostic = _stringify_context_value(narrative_diagnostic)
+        health_profile = _build_locality_health_advice(name, aqi_value, components, feature_context)
+
         return {
             "name": name,
             "lat": lat,
@@ -1337,10 +1654,17 @@ def _fetch_locality_aqi(locality, origin_lat, origin_lon):
             "source": source_name,
             "landUseTag": " & ".join(land_use_tags) if land_use_tags else None,
             "landUseIcon": land_use_icon,
-            "note": analytics_narrative.context or locality.get("note") or analytics_narrative.diagnostic,
+            "note": narrative_context or _stringify_context_value(locality.get("note")) or narrative_diagnostic,
+            "healthAdvice": health_profile["advice"],
+            "bestTime": health_profile["best_time"],
+            "riskGroup": health_profile["risk_group"],
             # Location-aware analytics with industrial/traffic/water body context
             "analytics": {
-                "narrative": analytics_narrative,
+                "narrative": {
+                    **(analytics_narrative if isinstance(analytics_narrative, dict) else {}),
+                    "context": narrative_context,
+                    "diagnostic": narrative_diagnostic,
+                },
                 "risk": risk_snapshot,
                 "summary": ai_summary,
                 "kpis": build_dashboard_kpis(aqi_value, risk_snapshot.get("score", 0), city_name=name),
@@ -1351,6 +1675,40 @@ def _fetch_locality_aqi(locality, origin_lat, origin_lon):
         return None
 
 
+def _hyderabad_locality_snapshot():
+    localities = POPULAR_LOCALITIES.get("hyderabad", []) or []
+    snapshot = {}
+    for item in localities:
+        name = item.get("name")
+        if not name:
+            continue
+        lat = item.get("lat")
+        lon = item.get("lon")
+        if lat is None or lon is None:
+            continue
+        try:
+            data = fetch_current_aqi_data(float(lat), float(lon), city_name=name)
+            source_name = data.get("source", "Unknown")
+            components = data.get("components", {}) or {}
+            aqi_value = determine_aqi(components, data.get("main", {}).get("aqi"), source=source_name)
+            if aqi_value is None or "mock" in str(source_name).lower() or "live data unavailable" in str(source_name).lower():
+                continue
+            snapshot[name] = {
+                "name": name,
+                "lat": float(lat),
+                "lon": float(lon),
+                "aqi": int(aqi_value),
+                "source": source_name,
+                "updatedAt": datetime.utcnow().isoformat(),
+            }
+        except Exception:
+            continue
+    if snapshot:
+        HYDERABAD_LOCALITY_CACHE["hyderabad"] = snapshot
+        save_hyderabad_locality_cache()
+    return snapshot
+
+
 @app.route("/search-cities", methods=["GET"])
 def search_cities():
     q = request.args.get("q", default="", type=str).strip().lower()
@@ -1358,6 +1716,8 @@ def search_cities():
     if not q:
         return jsonify([])
     matches = [c for c in CITY_SEARCH if c.lower().startswith(q)]
+    if not matches and q.startswith("hyd"):
+        matches = ["Hyderabad"]
     return jsonify(matches[:limit])
 
 
@@ -1378,7 +1738,12 @@ def nearby_aqi():
         cache_key = f"nearby:{round(lat,2)}:{round(lon,2)}:{int(radius)}"
         # Return cached payload immediately when available
         if cache_key in CACHE:
-            return jsonify(CACHE[cache_key])
+            payload = CACHE[cache_key]
+            if isinstance(payload, dict) and payload.get("source") == "no_data" and not payload.get("localities"):
+                CACHE.pop(cache_key, None)
+                RESPONSE_CACHE.pop(cache_key, None)
+            else:
+                return jsonify(payload)
 
         # If another request is already building this response, wait for it
         if cache_key in IN_FLIGHT:
@@ -1442,7 +1807,8 @@ def nearby_aqi():
                     suburbs = sampled
 
         if not suburbs:
-            return jsonify({"localities": [], "center_city": None, "source": "no_data"})
+            response = {"localities": [], "center_city": None, "source": "no_data"}
+            return jsonify(response)
 
         def _build_nearby():
             # Step 3: Parallel AQI fetch (max 12 workers, same pattern as compare endpoint)
@@ -1464,14 +1830,15 @@ def nearby_aqi():
                 return {"localities": [], "center_city": _reverse_geocode_city(lat, lon), "source": "no_data"}
 
             # Step 4: Sort and return
-            results.sort(key=lambda x: x["aqi"])
+            results = [item for item in results if item.get("aqi") is not None]
+            results.sort(key=lambda x: float(x.get("aqi", 0) or 0))
             center_city = _reverse_geocode_city(lat, lon)
 
             response = {
                 "localities": results,
                 "center_city": center_city,
                 "count": len(results),
-                "source": results[0].get("source", "Open-Meteo") if results else "unknown",
+                "source": "Live data",
             }
             # cache the result in the shared CACHE and persist it for later tracing
             CACHE[cache_key] = response

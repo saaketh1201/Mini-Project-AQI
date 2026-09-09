@@ -337,18 +337,23 @@ def detect_water_body_influence(lat, lon, city_name, components):
     """
     Detect if a location is near water bodies (affects humidity/dispersion).
     Returns: (near_water: bool, water_bodies: list, influence_strength: float)
+    Only returns true for genuinely nearby water features to avoid over-labeling
+    locations as water-adjacent simply because the broader city contains a lake or river.
     """
     nearby_features, _ = get_nearby_context(city_name, lat, lon, radius_km=5)
     water_bodies = nearby_features.get("water_bodies", [])
-    
+
     if not water_bodies:
         return False, [], 0.0
-    
-    # Proximity to water generally aids dispersion
+
+    # Only count as genuine nearby water if the closest feature is within a strict threshold.
     closest_water = min(water_bodies, key=lambda w: w["distance_km"])
-    influence = max(0.0, 1.0 - (closest_water["distance_km"] / 5.0))
-    
-    return len(water_bodies) > 0, water_bodies, influence
+    dist_km = float(closest_water.get("distance_km", float("inf")))
+    if dist_km > 3.0:
+        return False, [], 0.0
+
+    influence = max(0.0, 1.0 - (dist_km / 3.0))
+    return True, water_bodies, influence
 
 def get_seasonal_context(city_name, components):
     """

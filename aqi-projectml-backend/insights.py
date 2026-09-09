@@ -72,6 +72,23 @@ def build_environmental_risk_snapshot(components, aqi_value, history=None, forec
     """
     Enhanced ERS with location-specific factors: industrial influence, traffic, water bodies.
     """
+    if aqi_value is None:
+        return {
+            "score": 0,
+            "level": "Low",
+            "dominant_pollutant": {
+                "key": None,
+                "label": "No dominant pollutant",
+                "value": 0,
+                "unit": "µg/m³",
+            },
+            "weather": "Pollutant data is temporarily unavailable for this location.",
+            "trend": "Trend data is limited",
+            "confidence": 0,
+            "source": source,
+            "formula": "No live AQI data available",
+        }
+
     dominant_pollutant = None
     dominant_ratio = 0.0
     dominant_value = 0.0
@@ -208,6 +225,10 @@ def build_environmental_risk_snapshot(components, aqi_value, history=None, forec
 
 def build_ai_summary(components, aqi_value, weather, risk_snapshot, city_name=None, lat=None, lon=None):
     """Generate AI summary with location context awareness."""
+    if aqi_value is None:
+        city_text = f" for {city_name}" if city_name else ""
+        return f"Air quality data{city_text} is currently unavailable because live AQI readings are not available right now."
+
     pollutant = "PM2.5"
     if components and components.get("pm2_5") is not None:
         pollutant = "PM2.5"
@@ -301,6 +322,26 @@ def build_ai_summary(components, aqi_value, weather, risk_snapshot, city_name=No
     return summary
 
 
+def _stringify_context(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, dict):
+        # Keep the UI safe: dict-based context should be flattened to a single explanatory sentence
+        if value.get("summary"):
+            return str(value["summary"]).strip()
+        if value.get("text"):
+            return str(value["text"]).strip()
+        if value.get("description"):
+            return str(value["description"]).strip()
+        return "Environmental context is available for this locality."
+    if isinstance(value, (list, tuple)):
+        cleaned = [str(item).strip() for item in value if str(item).strip()]
+        return " ".join(cleaned) if cleaned else None
+    return str(value).strip() or None
+
+
 def build_analytics(components, aqi_value, city_name=None, lat=None, lon=None, history=None, forecast=None):
     """
     Build comprehensive, location-aware analytics narrative.
@@ -308,6 +349,15 @@ def build_analytics(components, aqi_value, city_name=None, lat=None, lon=None, h
     """
     if forecast is None:
         forecast = history or []
+
+    if aqi_value is None:
+        return {
+            "descriptive": f"Current AQI is unavailable for {city_name or 'this location'}.",
+            "diagnostic": "Detailed pollutant data is unavailable because live AQI data is not currently available.",
+            "predictive": "Forecast data is unavailable.",
+            "prescriptive": "AQI unavailable. Please verify the city name or try again later.",
+            "context": None,
+        }
 
     descriptive = f"Current AQI is {aqi_value} ({_aqi_category(aqi_value)}) based on US EPA measurement standards."
 
@@ -473,7 +523,7 @@ def build_analytics(components, aqi_value, city_name=None, lat=None, lon=None, h
         "diagnostic": diagnostic,
         "predictive": predictive,
         "prescriptive": prescriptive,
-        "context": context,
+        "context": _stringify_context(context),
     }
 
 
@@ -543,11 +593,13 @@ def _get_city_profile_notes(city_name):
 
 
 def build_dashboard_kpis(aqi_value, ers_score, city_name=None):
+    safe_aqi = 0 if aqi_value is None else int(round(aqi_value))
+    safe_ers = 0 if ers_score is None else int(round(ers_score))
     return {
-        "average_aqi": int(round(aqi_value)),
-        "average_ers": int(round(ers_score)),
+        "average_aqi": safe_aqi,
+        "average_ers": safe_ers,
         "cleanest_city": city_name or "No clean city",
         "most_polluted_city": city_name or "No hotspot",
-        "trend": "Stable" if ers_score < 60 else "Elevated",
+        "trend": "Stable" if safe_ers < 60 else "Elevated",
         "highest_risk_region": city_name or "No high-risk region",
     }

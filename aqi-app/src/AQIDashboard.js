@@ -336,6 +336,7 @@ export default function AQIDashboard({ city, onCityChange }) {
   const risk = analytics.risk || {};
   const aiSummary = analytics.summary || "Air quality conditions are being monitored in real time.";
   const kpis = analytics.kpis || {};
+  const contextText = typeof narrative.context === "string" ? narrative.context : (narrative.context ? "Environmental context information is available for this location." : "");
   const freshnessLabel = data.source === "IQAir AirVisual API" ? "IQAir" : data.source || "Live data";
   const freshnessAge = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "just now";
   const averageAqi = history.length > 0 ? Math.round(history.reduce((sum, item) => sum + (item.y || 0), 0) / history.length) : aqi;
@@ -790,11 +791,11 @@ export default function AQIDashboard({ city, onCityChange }) {
           </div>
 
           {/* Geodemographic context */}
-          {narrative.context && (
+          {contextText && (
             <div className="aeris-card" style={{ padding: "1.75rem", marginBottom: "1.5rem" }}>
               <div className="eyebrow" style={{ marginBottom: "0.75rem" }}>Environmental context</div>
               <p style={{ fontSize: "0.9375rem", color: "var(--color-text-secondary)", lineHeight: 1.75, margin: 0 }}>
-                {narrative.context}
+                {contextText}
               </p>
             </div>
           )}

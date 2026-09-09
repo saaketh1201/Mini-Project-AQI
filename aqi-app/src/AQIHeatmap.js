@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { HeatmapLayer } from "react-leaflet-heatmap-layer-v3";
-import { getRanking } from "./services/api";
+import { getHeatmap } from "./services/api";
 
 function getAQIColor(aqi) {
   if (aqi <= 50)  return "#22C55E";
@@ -70,11 +70,19 @@ export default function AQIHeatmap({ fullscreen = false }) {
   const [showMarkers, setShowMarkers] = useState(true);
 
   useEffect(() => {
-    getRanking()
+    getHeatmap()
       .then((res) => {
         const formatted = (Array.isArray(res) ? res : [])
-          .filter((item) => item.aqi != null)
-          .map((item) => ({ ...item, intensity: Math.min(item.aqi / 300, 1) }));
+          .filter((item) => Number.isFinite(Number(item.aqi)) && Number(item.aqi) >= 0)
+          .map((item) => ({
+            ...item,
+            city: item.city || item.name || "City",
+            lat: Number(item.lat),
+            lon: Number(item.lon),
+            aqi: Number(item.aqi),
+            intensity: Math.min(Number(item.aqi) / 300, 1),
+          }))
+          .filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lon));
         setPoints(formatted);
         setLoading(false);
       })
@@ -137,7 +145,15 @@ export default function AQIHeatmap({ fullscreen = false }) {
       {/* Map */}
       <div
         className="aeris-card"
-        style={{ overflow: "hidden", padding: 0, position: "relative", height: mapH }}
+        style={{
+          overflow: "hidden",
+          padding: 0,
+          position: "relative",
+          height: mapH,
+          border: "1px solid rgba(120, 170, 255, 0.18)",
+          boxShadow: "0 18px 50px rgba(7, 18, 38, 0.35)",
+          background: "linear-gradient(180deg, rgba(9, 18, 30, 0.92), rgba(5, 13, 21, 0.98))",
+        }}
       >
         {loading ? (
           <div className="skeleton" style={{ width: "100%", height: "100%" }} />

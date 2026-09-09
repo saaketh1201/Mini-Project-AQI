@@ -1,4 +1,5 @@
 import pytest
+import requests
 import app as backend_app
 
 
@@ -9,18 +10,30 @@ def client():
         yield c
 
 
-def test_aqi_heatmap_cached(client):
-    # Populate background cache with a few cities
+def test_aqi_heatmap_cached(client, monkeypatch):
     backend_app.BACKGROUND_CACHE.clear()
-    # Use a city from HEATMAP_CITIES list (normalized keys expected)
-    backend_app.BACKGROUND_CACHE['delhi'] = {'aqi': 120, 'lat': 28.6, 'lon': 77.2}
-    backend_app.BACKGROUND_CACHE['mumbai'] = {'aqi': 80, 'lat': 19.0, 'lon': 72.8}
+    backend_app.HEATMAP_CITIES = ['Delhi', 'Mumbai']
+
+    def fake_get_city_coords(city):
+        coords = {'delhi': (28.6139, 77.2090), 'mumbai': (19.0760, 72.8777)}
+        return coords.get(city.lower(), (0.0, 0.0))
+
+    def fake_fetch_current_aqi_data(lat, lon, city_name=None):
+        return {
+            'components': {'pm2_5': 30, 'pm10': 50, 'no2': 20, 'so2': 10, 'o3': 25, 'co': 500},
+            'main': {'aqi': 82},
+            'source': 'Open-Meteo Air Quality API',
+        }
+
+    monkeypatch.setattr(backend_app, 'get_city_coords', fake_get_city_coords)
+    monkeypatch.setattr(backend_app, 'fetch_current_aqi_data', fake_fetch_current_aqi_data)
 
     resp = client.get('/aqi-heatmap')
     assert resp.status_code == 200
     data = resp.get_json()
     assert isinstance(data, list)
-    assert any(item.get('aqi') == 120 for item in data)
+    assert any(item.get('aqi') == 82 for item in data)
+    assert any(item.get('name') == 'Delhi' for item in data)
 
 
 def test_report_compare_endpoint(client, monkeypatch):
@@ -35,4 +48,22 @@ def test_report_compare_endpoint(client, monkeypatch):
     data = resp.get_json()
     assert 'city1' in data and 'city2' in data
     assert data['city1']['aqi'] == 75
+
+
+def test_fetch_iqair_city_data_short_circuits_on_429(monkeypatch):
+    calls = []
+
+    class FakeResponse:
+        status_code = 429
+
+    def fake_get(url, timeout):
+        calls.append(url)
+        return FakeResponse()
+
+    monkeypatch.setattr(backend_app.requests, 'get', fake_get)
+
+    with pytest.raises(requests.exceptions.RequestException):
+        backend_app.fetch_iqair_city_data(17.385, 78.4867)
+
+    assert len(calls) <= 2
 # end of tests

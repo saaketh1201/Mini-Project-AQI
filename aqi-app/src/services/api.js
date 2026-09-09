@@ -145,4 +145,25 @@ export async function getRanking() {
   return promise;
 }
 
+export async function getHeatmap() {
+  const key = 'heatmap';
+  const now = Date.now();
+  const cached = CACHE.get(key);
+  if (cached && (now - cached._ts) < TTL_MS) return cached.payload;
+  if (IN_FLIGHT.has(key)) return IN_FLIGHT.get(key);
+
+  const promise = _requestWithFallback(() => api.get('/aqi-heatmap'), []).then((res) => {
+    const payload = Array.isArray(res?.data) ? res.data : [];
+    CACHE.set(key, { _ts: Date.now(), payload });
+    IN_FLIGHT.delete(key);
+    return payload;
+  }).catch((err) => {
+    IN_FLIGHT.delete(key);
+    throw err;
+  });
+
+  IN_FLIGHT.set(key, promise);
+  return promise;
+}
+
 export default api;

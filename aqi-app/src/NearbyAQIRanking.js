@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { getNearby } from "./services/api";
-import { getHyderabadFallback, HYD_CENTER } from "./hyderabadFallback";
+import { HYD_CENTER } from "./hyderabadFallback";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AQI helpers (pure — no hardcoded city data)
@@ -58,7 +58,7 @@ function getLocalityIcon(locality) {
 // Locality environmental analytics heuristics
 // ─────────────────────────────────────────────────────────────────────────────
 function generateLocalityInsights(locality) {
-  const { composition = {}, aqi, landUseTag, note, analytics } = locality;
+  const { composition = {}, aqi, landUseTag, note, analytics, healthAdvice, bestTime, riskGroup } = locality;
   const pm25 = composition.pm2_5 || 0;
   const pm10 = composition.pm10 || 0;
   const no2  = composition.no2 || 0;
@@ -73,22 +73,38 @@ function generateLocalityInsights(locality) {
   if (analytics) {
     const nar = analytics.narrative || {};
     const risk = analytics.risk || {};
-    if (analytics.summary) {
+    if (typeof healthAdvice === "string" && healthAdvice) {
+      bullets.push(healthAdvice);
+    }
+    if (typeof analytics.summary === "string" && analytics.summary) {
       bullets.push(analytics.summary);
     }
     if (analytics.narrative) {
       const cand = [nar.diagnostic, nar.predictive, nar.prescriptive, nar.context];
-      cand.forEach((c) => { if (c && !bullets.includes(c)) bullets.push(c); });
+      cand.forEach((c) => {
+        if (typeof c === "string" && c && !bullets.includes(c)) bullets.push(c);
+      });
     }
     if (risk && risk.level) tags.push(risk.level);
     if (analytics.kpis && analytics.kpis.highest_risk_region) tags.push("Region Insight");
-    const summary = analytics.summary || nar.descriptive || nar.diagnostic || note || "Environmental analytics available.";
+    const summary = typeof analytics.summary === "string" && analytics.summary
+      ? analytics.summary
+      : (typeof nar.descriptive === "string" ? nar.descriptive : (typeof nar.diagnostic === "string" ? nar.diagnostic : (typeof note === "string" ? note : "Environmental analytics available.")));
     return { tags: [...new Set(tags)], bullets, note, summary };
   }
 
   // Land-use classification from tag
   if (landUseTag) {
     tags.push(landUseTag);
+  }
+  if (typeof healthAdvice === "string" && healthAdvice) {
+    tags.push("Health Advisory");
+  }
+  if (bestTime) {
+    tags.push(`Best time: ${bestTime}`);
+  }
+  if (riskGroup) {
+    tags.push(`Risk group: ${riskGroup}`);
   }
 
   // ── Pollutant-based heuristics ─────────────────────────────────────────────
@@ -118,8 +134,11 @@ function generateLocalityInsights(locality) {
   const tag = (landUseTag || "").toLowerCase();
 
   if (tag.includes("lake") || tag.includes("green")) {
-    bullets.push("Proximity to a water body or green belt may support local humidity and natural particle washout — commonly observed to improve ventilation.");
-    tags.push("High Green Cover");
+    const waterPhrase = tag.includes("lake") || tag.includes("water")
+      ? "A nearby water feature may slightly improve local dispersion, but this is a secondary influence compared with AQI and traffic or industrial emissions."
+      : "This area may benefit from nearby green cover and natural dispersion, though the main pollution drivers remain traffic and emissions sources.";
+    bullets.push(waterPhrase);
+    tags.push("Green Cover");
   }
 
   if (tag.includes("industrial")) {
@@ -201,7 +220,6 @@ function useNearbyAQI(propLat, propLon, propCity) {
   const [centerCity, setCenterCity] = useState(null);
   const [loading, setLoading] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
-  const [dataSource, setDataSource] = useState(null);
   const [error, setError] = useState(null);
 
   const fetchNearbyData = useCallback(async (lat, lon) => {
@@ -214,23 +232,18 @@ function useNearbyAQI(propLat, propLon, propCity) {
       if (locs.length > 0) {
         setLocalities(locs);
         setCenterCity(data.center_city || null);
-        setDataSource(data.source || "Open-Meteo");
         setUsingFallback(false);
       } else {
-        // Activate Hyderabad fallback when no live localities are available
-        const fallback = getHyderabadFallback(lat, lon, 70);
-        setLocalities(fallback);
-        setCenterCity("Hyderabad (Demo)");
-        setDataSource("fallback");
-        setUsingFallback(true);
+        setLocalities([]);
+        setCenterCity(null);
+        setUsingFallback(false);
+        setError("Live nearby AQI data is temporarily unavailable. Please retry in a moment.");
       }
     } catch {
-      // API failed — use Hyderabad fallback
-      const fallback = getHyderabadFallback(lat, lon, 70);
-      setLocalities(fallback);
-      setCenterCity("Hyderabad (Demo)");
-      setDataSource("fallback");
-      setUsingFallback(true);
+      setLocalities([]);
+      setCenterCity(null);
+      setUsingFallback(false);
+      setError("Live nearby AQI data is temporarily unavailable. Please retry in a moment.");
     }
     setLoading(false);
   }, []);
@@ -279,7 +292,7 @@ function useNearbyAQI(propLat, propLon, propCity) {
 
   return {
     permissionState, userCoords, localities, centerCity,
-    loading, usingFallback, dataSource, error,
+    loading, usingFallback, error,
     requestLocation, loadHyderabadDemo, fetchNearbyData,
   };
 }
@@ -328,7 +341,7 @@ function PermissionPrompt({ onRequest, onDemo, requesting, error }) {
             )}
           </button>
           <button className="aeris-btn-ghost" onClick={onDemo} id="btn-hyderabad-demo">
-            Try Hyderabad Demo
+            Use Hyderabad location
           </button>
         </div>
       </div>
@@ -341,6 +354,7 @@ function PermissionPrompt({ onRequest, onDemo, requesting, error }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function LocalityInsightPanel({ locality }) {
   const { tags, bullets, note, summary } = useMemo(() => generateLocalityInsights(locality), [locality]);
+  const safeNote = typeof note === "string" ? note : (note ? "Environmental context is available for this locality." : "");
 
   return (
     <div className="nearby-insight-panel">
@@ -354,12 +368,12 @@ function LocalityInsightPanel({ locality }) {
           {summary}
         </div>
       )}
-      {note && (
+      {safeNote && (
         <div className="nearby-insight-note">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          {note}
+          {safeNote}
         </div>
       )}
       <ul className="nearby-insight-bullets">
@@ -387,7 +401,22 @@ function LocalityCard({ locality, rank, variant }) {
   const trend = getTrendIcon(locality.trend);
   const isClean = variant === "clean";
   const { tags, summary, note } = useMemo(() => generateLocalityInsights(locality), [locality]);
-  const subtitle = note || locality.landUseTag || locality.analytics?.narrative?.context || "";
+  const bestTime = locality.bestTime || "—";
+  const riskGroup = locality.riskGroup || "—";
+  const subtitle = typeof locality.healthAdvice === "string" && locality.healthAdvice
+    ? locality.healthAdvice
+    : (typeof note === "string" && note
+      ? note
+      : (typeof locality.landUseTag === "string" && locality.landUseTag ? locality.landUseTag : (
+          typeof locality.analytics?.narrative?.context === "string"
+            ? locality.analytics.narrative.context
+            : (locality.analytics?.narrative?.context ? "Environmental context is available for this locality." : "")
+        )));
+
+  const healthMeta = [
+    bestTime !== "—" ? `Best time: ${bestTime}` : null,
+    riskGroup !== "—" ? `Risk group: ${riskGroup}` : null,
+  ].filter(Boolean);
 
   return (
     <div
@@ -422,6 +451,13 @@ function LocalityCard({ locality, rank, variant }) {
             </div>
           </div>
           <div className="nearby-locality-summary">{summary}</div>
+          {healthMeta.length > 0 && (
+            <div className="nearby-locality-meta" style={{ marginBottom: "0.2rem" }}>
+              {healthMeta.map((chip) => (
+                <span key={chip} className="nearby-insight-tag">{chip}</span>
+              ))}
+            </div>
+          )}
           <div className="nearby-locality-meta">
             {tags.map((tag) => (
               <span key={tag} className="nearby-insight-tag">{tag}</span>
@@ -539,7 +575,7 @@ function LoadingState() {
 export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: propCity }) {
   const {
     permissionState, localities, centerCity,
-    loading, usingFallback, dataSource, error,
+    loading, usingFallback, error,
     requestLocation, loadHyderabadDemo,
   } = useNearbyAQI(propLat, propLon, propCity);
 
@@ -572,7 +608,6 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
               <circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/>
             </svg>
             {centerCity}
-            {usingFallback && <span className="nearby-fallback-chip">Demo</span>}
           </div>
         )}
       </div>
@@ -601,7 +636,7 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
           onRequest={requestLocation}
           onDemo={loadHyderabadDemo}
           requesting={false}
-          error={error || "Location access was denied. Try the Hyderabad demo instead."}
+          error={error || "Location access was denied. Use a Hyderabad location to continue."}
         />
       )}
 
@@ -611,13 +646,12 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
       )}
 
       {/* Data fallback notice */}
-      {!loading && usingFallback && localities.length > 0 && (
+      {!loading && !usingFallback && error && (
         <div className="nearby-fallback-notice">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          Live nearby data was unavailable for this location. Showing Hyderabad locality data for demonstration.
-          Composition values are derived from known area characteristics — not real-time measurements.
+          {error}
         </div>
       )}
 
@@ -632,7 +666,7 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
               { label: "Most Polluted AQI", val: mostPolluted[0]?.aqi ?? "—", color: getAQIColor(mostPolluted[0]?.aqi) },
               {
                 label: "Data Source",
-                val: usingFallback ? "Demo Fallback" : (dataSource || "Open-Meteo"),
+                val: "Live data",
               },
             ].map(({ label, val, color }) => (
               <div key={label} className="nearby-stat-item">

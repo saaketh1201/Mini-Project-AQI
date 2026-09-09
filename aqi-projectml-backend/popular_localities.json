@@ -34,5 +34,19 @@
     {"name": "Pimpri", "lat": 18.6265, "lon": 73.7997},
     {"name": "Chinchwad", "lat": 18.6298, "lon": 73.7997},
     {"name": "Kharadi", "lat": 18.5369, "lon": 73.9543}
+  ],
+  "hyderabad": [
+    {"name": "Patancheru", "lat": 17.5278, "lon": 78.2633},
+    {"name": "Uppal", "lat": 17.4007, "lon": 78.5596},
+    {"name": "ECIL", "lat": 17.4627, "lon": 78.5601},
+    {"name": "LB Nagar", "lat": 17.3462, "lon": 78.5567},
+    {"name": "Ameerpet", "lat": 17.4375, "lon": 78.4482},
+    {"name": "Kukatpally", "lat": 17.4849, "lon": 78.4138},
+    {"name": "Kompally", "lat": 17.5592, "lon": 78.4772},
+    {"name": "Secunderabad", "lat": 17.4399, "lon": 78.4983},
+    {"name": "Nacharam", "lat": 17.4078, "lon": 78.5498},
+    {"name": "Madhapur", "lat": 17.4471, "lon": 78.3882},
+    {"name": "Kondapur", "lat": 17.4647, "lon": 78.3630},
+    {"name": "Banjara Hills", "lat": 17.4126, "lon": 78.4480}
   ]
 }

@@ -58,3 +58,25 @@ def test_dominant_pollutant_uses_normalized_severity(monkeypatch):
     components = {"no2": 180, "pm2_5": 80, "pm10": 40}
     risk = backend_app.build_environmental_risk_snapshot(components, 150, history=[], forecast=[])
     assert risk["dominant_pollutant"]["key"] == "pm2_5"
+
+
+def test_aqi_endpoint_handles_no_live_data_gracefully(monkeypatch, client):
+    def fake_get_city_coords(city):
+        return (17.3606, 78.4747)
+
+    def fake_fetch_current_aqi_data(lat, lon, city_name=None):
+        return {"components": {}, "main": {"aqi": None}, "source": "Live data unavailable"}
+
+    backend_app.CACHE.clear()
+    monkeypatch.setattr(mod, 'get_city_coords', fake_get_city_coords)
+    monkeypatch.setattr(mod, 'fetch_current_aqi_data', fake_fetch_current_aqi_data)
+    monkeypatch.setattr(mod, 'fetch_openmeteo_history', lambda lat, lon: [])
+    monkeypatch.setattr(mod, 'fetch_openmeteo_weather', lambda lat, lon: {"humidity": None, "wind_speed": None})
+    monkeypatch.setattr(mod, 'train_and_predict_pm25', lambda history: ([], {"MAE": 0, "RMSE": 0, "MAPE": 0}))
+
+    resp = client.get('/aqi/Hyderabad')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['city'] == 'Hyderabad'
+    assert data['aqi'] is None
+    assert data['source'] == 'Live data unavailable'
