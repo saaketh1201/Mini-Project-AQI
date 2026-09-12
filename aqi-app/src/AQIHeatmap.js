@@ -136,8 +136,8 @@ export default function AQIHeatmap({ fullscreen = false }) {
             </button>
           ))}
           <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>
-            <span className="live-dot" style={{ width: "6px", height: "6px" }} />
-            {loading ? "Loading…" : `${points.length} stations`}
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-accent)" }} />
+            {loading ? "Loading cached snapshot…" : `${points.length} cached stations`}
           </div>
         </div>
       </div>
@@ -209,6 +209,10 @@ export default function AQIHeatmap({ fullscreen = false }) {
                     <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.375rem", fontFamily: "var(--font-mono)" }}>
                       {Number(city.lat).toFixed(2)}°, {Number(city.lon).toFixed(2)}°
                     </div>
+                    <div style={{ fontSize: "0.6875rem", color: "var(--color-text-muted)", marginTop: "0.375rem" }}>
+                      Cached source: {city.source || "AQI provider"}
+                      {city.updatedAt ? ` · ${new Date(city.updatedAt).toLocaleDateString()}` : ""}
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -248,7 +252,7 @@ export default function AQIHeatmap({ fullscreen = false }) {
             eyebrow: "Stations tracked",
             value: points.length,
             mono: true,
-            sub: "Cities with live AQI data",
+            sub: "Cities in cached AQI snapshot",
           },
           {
             eyebrow: "Worst air quality",

@@ -11,7 +11,7 @@ from geopy.geocoders import Nominatim
 from aqi_model import train_and_predict_pm25
 from dotenv import load_dotenv
 from insights import build_environmental_risk_snapshot, build_ai_summary, build_dashboard_kpis, build_analytics
-from location_context import get_nearby_context, detect_industrial_influence, detect_traffic_influence, detect_water_body_influence
+from location_context import get_nearby_context, get_city_environmental_context, detect_industrial_influence, detect_traffic_influence, detect_water_body_influence
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -219,6 +219,7 @@ def cached_route(func):
 
 IQAIR_API_KEY = os.getenv("IQAIR_API_KEY")
 REQUEST_TIMEOUT = 10
+ENVIRONMENTAL_CONTEXT_VERSION = 2
 
 # ── Background Data Collector ────────────────────────────────────────────────
 RANKING_CITIES = [
@@ -299,6 +300,7 @@ GLOBAL_HEATMAP_CITIES = [
 
 GLOBAL_HEATMAP_CACHE_FILE = _safe_cache_path("global_heatmap_cache.json")
 GLOBAL_HEATMAP_CACHE = []
+GLOBAL_HEATMAP_REBUILD_ATTEMPTED = False
 
 
 def load_global_heatmap_cache():
@@ -772,6 +774,105 @@ def fetch_openmeteo_history(lat, lon):
     return []
 
 
+@cachetools.cached(cache=cachetools.TTLCache(maxsize=1024, ttl=86400))
+def fetch_openmeteo_annual_monthly_aqi(lat, lon):
+    """Aggregate up to one year of hourly PM2.5 into monthly AQI estimates."""
+    import datetime as dt
+
+    try:
+        current_month = dt.date.today().replace(day=1)
+        end_date = current_month - dt.timedelta(days=1)
+        start_month_index = current_month.year * 12 + current_month.month - 1 - 12
+        start_year, start_month_offset = divmod(start_month_index, 12)
+        start_date = dt.date(start_year, start_month_offset + 1, 1)
+        response = requests.get(
+            "https://air-quality-api.open-meteo.com/v1/air-quality",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "hourly": "pm2_5",
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "timezone": "UTC",
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        hourly = response.json().get("hourly", {})
+        monthly_values = {}
+        for timestamp, value in zip(hourly.get("time", []), hourly.get("pm2_5", [])):
+            if value is None:
+                continue
+            month_key = timestamp[:7]
+            monthly_values.setdefault(month_key, []).append(float(value))
+
+        monthly = []
+        for month_key, values in sorted(monthly_values.items()):
+            if not values:
+                continue
+            average_pm25 = sum(values) / len(values)
+            estimated_aqi = pm25_to_aqi(average_pm25)
+            if estimated_aqi is not None:
+                month_date = dt.datetime.strptime(month_key, "%Y-%m")
+                monthly.append({
+                    "month": month_date.strftime("%B"),
+                    "month_key": month_key,
+                    "average_pm25": round(average_pm25, 1),
+                    "estimated_aqi": int(estimated_aqi),
+                    "hours_sampled": len(values),
+                })
+        return monthly if len(monthly) >= 8 else []
+    except Exception as e:
+        print(f"Annual Open-Meteo history unavailable: {e}")
+        return []
+
+
+def _build_tourism_context(monthly_aqi):
+    if not monthly_aqi:
+        return {
+            "available": False,
+            "best_months": [],
+            "monthly_aqi": [],
+            "best_season": None,
+            "summary": "A full 12-month AQI history is not available for this location yet.",
+            "method_note": "Tourism timing requires at least eight monthly observations from the annual air-quality history.",
+        }
+
+    season_by_month = {
+        "December": "Winter", "January": "Winter", "February": "Winter",
+        "March": "Spring", "April": "Spring", "May": "Spring",
+        "June": "Summer", "July": "Summer", "August": "Summer",
+        "September": "Autumn", "October": "Autumn", "November": "Autumn",
+    }
+    cleanest = sorted(monthly_aqi, key=lambda item: (item["estimated_aqi"], item["average_pm25"]))[:3]
+    season_scores = {}
+    for item in monthly_aqi:
+        season = season_by_month.get(item["month"], "Unknown")
+        season_scores.setdefault(season, []).append(item["estimated_aqi"])
+    best_season = min(season_scores, key=lambda season: sum(season_scores[season]) / len(season_scores[season]))
+    month_names = ", ".join(item["month"] for item in cleanest)
+    return {
+        "available": True,
+        "best_months": cleanest,
+        "monthly_aqi": monthly_aqi,
+        "best_season": best_season,
+        "summary": f"Historically cleanest months are {month_names}; {best_season} has the lowest average AQI among the available seasons.",
+        "method_note": "Based on monthly average PM2.5 converted to an estimated US AQI from the previous 12 months. Weather and events can change conditions in any year.",
+    }
+
+
+def _build_dynamic_visit_window(tourism, weather):
+    if not tourism.get("available"):
+        return "Check the current AQI and forecast before planning outdoor activities."
+    months = ", ".join(item["month"] for item in tourism.get("best_months", [])[:3])
+    wind = weather.get("wind_speed") if weather else None
+    if wind is not None and float(wind) >= 8:
+        return f"Prefer {months}; current wind is helping disperse pollution, so late morning or early evening is a practical window."
+    if wind is not None and float(wind) < 4:
+        return f"Prefer {months}; current wind is light, so choose shorter visits outside rush hour and recheck AQI before going out."
+    return f"Prefer {months}; avoid rush hour and choose the cleaner part of the day when the AQI trend is lowest."
+
+
 def slugify_city(city):
     slug = city.strip().lower()
     for ch in [" ", ",", ".", "'", "’", "(", ")", "–", "—", "/"]:
@@ -867,7 +968,24 @@ def get_aqi(city):
     cache_key = f"aqi:{city.strip().lower()}"
     # Return cached payload immediately when available
     if cache_key in CACHE:
-        return jsonify(CACHE[cache_key])
+        cached_payload = CACHE[cache_key]
+        if isinstance(cached_payload, dict) and (
+            cached_payload.get("environmental_context_version") != ENVIRONMENTAL_CONTEXT_VERSION
+            or "tourism" not in cached_payload.get("environmental_context", {})
+        ):
+            CACHE.pop(cache_key, None)
+        else:
+            if isinstance(cached_payload, dict) and "environmental_context" not in cached_payload:
+                cached_payload = dict(cached_payload)
+                cached_payload["environmental_context"] = _build_city_environmental_context(
+                    cached_payload.get("city", city),
+                    cached_payload.get("lat"),
+                    cached_payload.get("lon"),
+                    cached_payload.get("composition", {}),
+                    cached_payload.get("aqi"),
+                )
+                CACHE[cache_key] = cached_payload
+            return jsonify(cached_payload)
 
     # If another request is already building this response, wait for it
     if cache_key in IN_FLIGHT:
@@ -886,10 +1004,12 @@ def get_aqi(city):
         components = aqi_data.get("components", {})
         source_name = aqi_data.get("source", "Unknown")
         aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
+        environmental_context = _build_city_environmental_context(city, lat, lon, components, aqi_value)
 
         # Parallel fetches for history and weather
         hist_fut = EXECUTOR.submit(fetch_openmeteo_history, lat, lon)
         weather_fut = EXECUTOR.submit(fetch_openmeteo_weather, lat, lon)
+        annual_fut = EXECUTOR.submit(fetch_openmeteo_annual_monthly_aqi, lat, lon)
 
         try:
             history = hist_fut.result(timeout=20)
@@ -900,6 +1020,11 @@ def get_aqi(city):
             weather = weather_fut.result(timeout=10)
         except Exception:
             weather = {"humidity": None, "wind_speed": None}
+
+        try:
+            annual_monthly_aqi = annual_fut.result(timeout=20)
+        except Exception:
+            annual_monthly_aqi = []
 
         forecast, metrics = train_and_predict_pm25(history) if history else ([], {"MAE": 0, "RMSE": 0, "MAPE": 0})
 
@@ -915,6 +1040,8 @@ def get_aqi(city):
             "summary": ai_summary,
             "kpis": kpis,
         }
+        environmental_context["tourism"] = _build_tourism_context(annual_monthly_aqi)
+        environmental_context["best_time_for_outdoor_visit"] = _build_dynamic_visit_window(environmental_context["tourism"], weather)
 
         result = {
             "city":        city,
@@ -927,6 +1054,8 @@ def get_aqi(city):
             "metrics":     metrics,
             "source":      source_name,
             "analytics":   analytics,
+            "environmental_context": environmental_context,
+            "environmental_context_version": ENVIRONMENTAL_CONTEXT_VERSION,
             "weather":     weather,
             "updatedAt":   datetime.utcnow().isoformat(),
         }
@@ -941,7 +1070,7 @@ def get_aqi(city):
     fut = EXECUTOR.submit(_build)
     IN_FLIGHT[cache_key] = fut
     try:
-        payload = fut.result(timeout=30)
+        payload = fut.result(timeout=90)
         # handle logical errors
         if isinstance(payload, dict) and payload.get("_status") == 400:
             return jsonify({"error": payload.get("_error")}), 400
@@ -1048,9 +1177,13 @@ def compare_cities():
             aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
 
             weather = fetch_openmeteo_weather(lat, lon)
+            annual_monthly_aqi = fetch_openmeteo_annual_monthly_aqi(lat, lon)
             history = []
             forecast = []
             metrics = {}
+            environmental_context = _build_city_environmental_context(city, lat, lon, components, aqi_value)
+            environmental_context["tourism"] = _build_tourism_context(annual_monthly_aqi)
+            environmental_context["best_time_for_outdoor_visit"] = _build_dynamic_visit_window(environmental_context["tourism"], weather)
 
             narrative = build_analytics(
                 components,
@@ -1090,6 +1223,8 @@ def compare_cities():
                 },
                 "metrics": metrics,
                 "weather": weather,
+                "environmental_context": environmental_context,
+                "environmental_context_version": ENVIRONMENTAL_CONTEXT_VERSION,
                 "updatedAt": datetime.utcnow().isoformat(),
             }
         except Exception as e:
@@ -1114,23 +1249,22 @@ def _fetch_single_city_aqi(city):
         return None
 
 def _build_global_heatmap_snapshot():
-    snapshot = []
-    for item in GLOBAL_HEATMAP_CITIES:
+    def fetch_city(item):
         city = item.get("city")
         lat = item.get("lat")
         lon = item.get("lon")
         if not city or lat is None or lon is None:
-            continue
+            return None
         try:
             aqi_data = fetch_current_aqi_data(float(lat), float(lon), city_name=city)
             source_name = aqi_data.get("source", "Unknown")
             if source_name and any(marker in str(source_name).lower() for marker in ("mock", "demo", "live data unavailable")):
-                continue
+                return None
             components = aqi_data.get("components", {}) or {}
             aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
             if aqi_value is None:
-                continue
-            snapshot.append({
+                return None
+            return {
                 "city": city,
                 "name": city,
                 "lat": float(lat),
@@ -1138,9 +1272,17 @@ def _build_global_heatmap_snapshot():
                 "aqi": int(aqi_value),
                 "source": source_name,
                 "updatedAt": datetime.utcnow().isoformat(),
-            })
+            }
         except Exception:
-            continue
+            return None
+
+    snapshot = []
+    with ThreadPoolExecutor(max_workers=min(12, len(GLOBAL_HEATMAP_CITIES))) as executor:
+        futures = [executor.submit(fetch_city, item) for item in GLOBAL_HEATMAP_CITIES]
+        for future in futures:
+            result = future.result()
+            if result:
+                snapshot.append(result)
 
     if snapshot:
         snapshot = sorted(snapshot, key=lambda x: float(x.get("aqi", 0) or 0), reverse=True)
@@ -1151,6 +1293,7 @@ def _build_global_heatmap_snapshot():
 
 @app.route("/aqi-heatmap", methods=["GET"])
 def aqi_heatmap():
+    global GLOBAL_HEATMAP_REBUILD_ATTEMPTED
     cache_key = "aqi_heatmap"
     if cache_key in CACHE:
         return jsonify(CACHE[cache_key])
@@ -1163,9 +1306,14 @@ def aqi_heatmap():
             pass
 
     def _build_heatmap():
+        global GLOBAL_HEATMAP_REBUILD_ATTEMPTED
         results = []
         if GLOBAL_HEATMAP_CACHE:
             results = [dict(item) for item in GLOBAL_HEATMAP_CACHE if item.get("aqi") is not None]
+            distinct_aqi = {item.get("aqi") for item in results}
+            if len(results) > 1 and len(distinct_aqi) == 1 and not GLOBAL_HEATMAP_REBUILD_ATTEMPTED:
+                GLOBAL_HEATMAP_REBUILD_ATTEMPTED = True
+                results = _build_global_heatmap_snapshot()
         if not results:
             results = _build_global_heatmap_snapshot()
         if not results:
@@ -1195,6 +1343,59 @@ def aqi_heatmap():
         IN_FLIGHT.pop(cache_key, None)
 
 
+def _build_city_environmental_context(city, lat, lon, components, aqi_value):
+    features = {}
+    if lat is not None and lon is not None:
+        features = get_city_environmental_context(city, lat, lon, minimum_features=5)
+    pm25 = float(components.get("pm2_5") or 0)
+    pm10 = float(components.get("pm10") or 0)
+    no2 = float(components.get("no2") or 0)
+    so2 = float(components.get("so2") or 0)
+    o3 = float(components.get("o3") or 0)
+    co = float(components.get("co") or 0)
+
+    pollution_sources = []
+    if no2 >= 30 or co >= 800:
+        pollution_sources.append({"name": "Traffic and vehicle exhaust", "evidence": f"NO₂ {no2:.1f} µg/m³, CO {co:.0f} µg/m³"})
+    if pm10 >= 50 or (pm25 and pm10 / pm25 >= 1.8):
+        pollution_sources.append({"name": "Road dust and construction", "evidence": f"PM10 {pm10:.1f} µg/m³"})
+    if so2 >= 20:
+        pollution_sources.append({"name": "Industrial or fuel combustion", "evidence": f"SO₂ {so2:.1f} µg/m³"})
+    if pm25 >= 25:
+        pollution_sources.append({"name": "Fine-particle combustion", "evidence": f"PM2.5 {pm25:.1f} µg/m³"})
+    if o3 >= 60:
+        pollution_sources.append({"name": "Photochemical ozone formation", "evidence": f"O₃ {o3:.1f} µg/m³"})
+    if not pollution_sources:
+        pollution_sources.append({"name": "No strong source signature", "evidence": "Current pollutant readings are not strongly elevated."})
+
+    if aqi_value is None:
+        health_recommendations = ["AQI is unavailable; check again before planning outdoor activity."]
+        best_time = "Wait for a valid AQI reading"
+    elif aqi_value <= 50:
+        health_recommendations = ["Outdoor activity is generally suitable.", "Sensitive people should still check the dominant pollutant and trend."]
+        best_time = "Most times; avoid busy traffic periods when possible"
+    elif aqi_value <= 100:
+        health_recommendations = ["Most people can continue normal activity.", "Sensitive people should reduce prolonged exertion near traffic or visible smoke."]
+        best_time = "Late morning or early evening, away from rush hour"
+    elif aqi_value <= 150:
+        health_recommendations = ["Sensitive groups should reduce prolonged or strenuous outdoor activity.", "Choose cleaner routes and keep outdoor visits shorter."]
+        best_time = "Short visits during the cleaner part of the day; avoid rush hour"
+    else:
+        health_recommendations = ["Everyone should reduce prolonged outdoor exertion.", "Sensitive groups should prefer indoor activities and follow local health guidance."]
+        best_time = "Postpone outdoor tourism until AQI and forecast conditions improve"
+
+    return {
+        "known_industrial_areas": features.get("industrial_zones", [])[:5],
+        "traffic_corridors": features.get("traffic_corridors", [])[:5],
+        "nearby_water_bodies": features.get("water_bodies", [])[:5],
+        "seasonal_factors": features.get("seasonal_factors", {}),
+        "pollution_sources": pollution_sources,
+        "health_recommendations": health_recommendations,
+        "best_time_for_outdoor_visit": best_time,
+        "method_note": "Location features come from the curated city context database; pollutant sources are evidence-based inferences from current measurements.",
+    }
+
+
 @app.route("/report/<city>", methods=["GET"])
 def generate_report(city):
     try:
@@ -1207,6 +1408,11 @@ def generate_report(city):
         source_name = aqi_data.get("source", "Unknown")
         aqi_value = determine_aqi(components, aqi_data.get("main", {}).get("aqi"), source=source_name)
         history = fetch_openmeteo_history(lat, lon)
+        weather = fetch_openmeteo_weather(lat, lon)
+        annual_monthly_aqi = fetch_openmeteo_annual_monthly_aqi(lat, lon)
+        environmental_context = _build_city_environmental_context(city, lat, lon, components, aqi_value)
+        environmental_context["tourism"] = _build_tourism_context(annual_monthly_aqi)
+        environmental_context["best_time_for_outdoor_visit"] = _build_dynamic_visit_window(environmental_context["tourism"], weather)
         forecast, metrics = train_and_predict_pm25(history) if history else ([], {})
         analytics = build_analytics(components, aqi_value, city_name=city, lat=lat, lon=lon, history=history, forecast=forecast)
 
@@ -1309,6 +1515,61 @@ def generate_report(city):
             story.append(Paragraph("ENVIRONMENTAL CONTEXT", tag_style))
             story.append(Paragraph(analytics["context"], body_style))
 
+        story.append(Paragraph("WEATHER AND CURRENT CONDITIONS", section_title))
+        story.append(Paragraph(f"Humidity: {weather.get('humidity', 'Unavailable')}% · Wind: {weather.get('wind_speed', 'Unavailable')} km/h · Data source: {source_name}", body_style))
+
+        story.append(Paragraph("COMPLETE POLLUTANT READINGS", section_title))
+        pollutant_rows = [["Pollutant", "Measurement", "Interpretation"]]
+        pollutant_labels = {
+            "pm2_5": ("PM2.5", "Fine particulate matter"), "pm10": ("PM10", "Coarse particulate matter"),
+            "no2": ("NO₂", "Nitrogen dioxide"), "so2": ("SO₂", "Sulfur dioxide"),
+            "o3": ("O₃", "Ozone"), "co": ("CO", "Carbon monoxide"), "nh3": ("NH₃", "Ammonia"),
+        }
+        for key, (label, interpretation) in pollutant_labels.items():
+            value = components.get(key)
+            if value is not None:
+                pollutant_rows.append([label, f"{float(value):.1f} µg/m³", interpretation])
+        pollutant_table = Table(pollutant_rows, colWidths=[1.2 * inch, 1.6 * inch, 3.9 * inch])
+        pollutant_table.setStyle(t_style)
+        story.append(pollutant_table)
+
+        story.append(Paragraph("CITY GEOGRAPHIC CONTEXT", section_title))
+        context_sections = [
+            ("Pollution sources", [f"{item.get('name')}: {item.get('evidence')}" for item in environmental_context.get("pollution_sources", [])]),
+            ("Known industrial areas", [item.get("name") for item in environmental_context.get("known_industrial_areas", [])]),
+            ("Traffic corridors", [item.get("name") for item in environmental_context.get("traffic_corridors", [])]),
+            ("Water bodies", [item.get("name") for item in environmental_context.get("nearby_water_bodies", [])]),
+            ("Health recommendations", environmental_context.get("health_recommendations", [])),
+        ]
+        for label, values in context_sections:
+            story.append(Paragraph(label, tag_style))
+            for value in values or ["No verified data available."]:
+                story.append(Paragraph(f"• {value}", body_style))
+        story.append(Paragraph(f"Best time to visit: {environmental_context.get('best_time_for_outdoor_visit', 'Check current AQI')}", body_style))
+
+        tourism = environmental_context.get("tourism", {})
+        story.append(Paragraph("TOURISM TIMING FROM 12-MONTH AQI HISTORY", section_title))
+        story.append(Paragraph(tourism.get("summary", "Annual tourism timing is unavailable."), body_style))
+        if tourism.get("best_months"):
+            story.append(Paragraph("Cleanest months: " + ", ".join(f"{item['month']} (AQI {item['estimated_aqi']})" for item in tourism["best_months"]), body_style))
+        monthly_rows = [["Month", "Estimated AQI", "Average PM2.5", "Samples"]]
+        for item in tourism.get("monthly_aqi", []):
+            monthly_rows.append([item.get("month"), item.get("estimated_aqi"), f"{item.get('average_pm25')} µg/m³", item.get("hours_sampled")])
+        if len(monthly_rows) > 1:
+            monthly_table = Table(monthly_rows, colWidths=[1.4 * inch, 1.4 * inch, 1.7 * inch, 1.5 * inch])
+            monthly_table.setStyle(t_style)
+            story.append(monthly_table)
+        story.append(Paragraph(tourism.get("method_note", ""), body_style))
+
+        if history:
+            story.append(Paragraph("30-DAY HISTORY", section_title))
+            story.append(Paragraph(f"Historical PM2.5 observations: {len(history)}. First recorded value: {history[0].get('y', '—')} µg/m³; latest recorded value: {history[-1].get('y', '—')} µg/m³.", body_style))
+        if forecast:
+            story.append(Paragraph("FORECAST DATA", section_title))
+            forecast_values = [point.get("yhat", point.get("y")) for point in forecast if point.get("yhat", point.get("y")) is not None]
+            if forecast_values:
+                story.append(Paragraph(f"Forecast points: {len(forecast_values)}. Range: {min(forecast_values):.1f}–{max(forecast_values):.1f} µg/m³ PM2.5.", body_style))
+
         # Model metrics
         if metrics and metrics.get("MAE") is not None:
             story.append(Paragraph("Forecast Model Performance", section_title))
@@ -1347,12 +1608,55 @@ def generate_comparison_report():
         if not city1 or not city2:
             return jsonify({"error": "Both city names required"}), 400
 
+        def comparison_pdf(payload):
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=0.65 * inch, rightMargin=0.65 * inch, topMargin=0.65 * inch, bottomMargin=0.65 * inch)
+            styles = getSampleStyleSheet()
+            title = ParagraphStyle("ComparisonTitle", parent=styles["Title"], fontSize=20, textColor=colors.HexColor("#030D18"), spaceAfter=6)
+            section = ParagraphStyle("ComparisonSection", parent=styles["Heading2"], fontSize=12, textColor=colors.HexColor("#00897E"), spaceBefore=12, spaceAfter=5)
+            body = ParagraphStyle("ComparisonBody", parent=styles["BodyText"], fontSize=9, leading=13, textColor=colors.HexColor("#1a202c"), spaceAfter=4)
+            story = [Paragraph("Aeris City Comparison Report", title), Paragraph(f"{city1} vs {city2}", body), HRFlowable(width="100%", thickness=1, color=colors.HexColor("#00C2B8"), spaceAfter=10)]
+
+            for key in ("city1", "city2"):
+                city_data = payload.get(key, {})
+                name = city_data.get("city", key)
+                story.append(Paragraph(str(name), section))
+                story.append(Paragraph(f"AQI: {city_data.get('aqi', 'Unavailable')} · Source: {city_data.get('source', 'Unavailable')}", body))
+                composition = city_data.get("composition") or city_data.get("components") or {}
+                readings = ", ".join(f"{label}: {value} µg/m³" for label, value in (("PM2.5", composition.get("pm2_5")), ("PM10", composition.get("pm10")), ("NO₂", composition.get("no2")), ("O₃", composition.get("o3")), ("SO₂", composition.get("so2")), ("CO", composition.get("co"))) if value is not None)
+                if readings:
+                    story.append(Paragraph(f"Pollutant readings: {readings}", body))
+                analytics = city_data.get("analytics") or {}
+                narrative = analytics.get("narrative") or {}
+                for label in ("diagnostic", "predictive", "prescriptive", "context"):
+                    if narrative.get(label):
+                        story.append(Paragraph(f"{label.title()}: {narrative[label]}", body))
+                context = city_data.get("environmental_context") or {}
+                if context:
+                    industrial = ", ".join(item.get("name", "") for item in context.get("known_industrial_areas", []) if item.get("name"))
+                    traffic = ", ".join(item.get("name", "") for item in context.get("traffic_corridors", []) if item.get("name"))
+                    tourism = context.get("tourism") or {}
+                    if industrial:
+                        story.append(Paragraph(f"Industrial areas: {industrial}", body))
+                    if traffic:
+                        story.append(Paragraph(f"Traffic corridors: {traffic}", body))
+                    if tourism.get("summary"):
+                        story.append(Paragraph(f"Best times to visit: {tourism['summary']}", body))
+                story.append(Spacer(1, 0.08 * inch))
+
+            doc.build(story)
+            buffer.seek(0)
+            return send_file(buffer, as_attachment=True, download_name=f"{city1}_vs_{city2}_Comparison_Report.pdf", mimetype="application/pdf")
+
         # Fetch data for both cities
         cache_key = f"compare:{city1.strip().lower()}:{city2.strip().lower()}"
 
         # Return cached payload immediately
         if cache_key in CACHE:
-            return jsonify(CACHE[cache_key])
+            cached_payload = CACHE[cache_key]
+            if isinstance(cached_payload, dict) and cached_payload.get("city1"):
+                return comparison_pdf(cached_payload)
+            CACHE.pop(cache_key, None)
 
         # Deduplicate concurrent compare requests
         if cache_key in IN_FLIGHT:
@@ -1400,13 +1704,13 @@ def generate_comparison_report():
         fut = EXECUTOR.submit(_build_compare)
         IN_FLIGHT[cache_key] = fut
         try:
-            payload = fut.result(timeout=30)
+            payload = fut.result(timeout=90)
             if isinstance(payload, dict) and payload.get("_status") == 400:
                 return jsonify({"error": payload.get("error")}), 400
-            return jsonify(payload)
+            return comparison_pdf(payload)
         except Exception as e:
             if cache_key in CACHE:
-                return jsonify(CACHE[cache_key])
+                return comparison_pdf(CACHE[cache_key])
             return jsonify({"error": str(e)}), 500
         finally:
             IN_FLIGHT.pop(cache_key, None)
@@ -1660,7 +1964,7 @@ def _fetch_locality_aqi(locality, origin_lat, origin_lon):
             "name": name,
             "lat": lat,
             "lon": lon,
-            "distance_km": round(locality["dist_km"], 1),
+            "distance_km": round(float(locality["dist_km"]), 2),
             "aqi": aqi_value,
             "composition": components,
             "category": aqi_category(aqi_value),
@@ -1847,7 +2151,12 @@ def nearby_aqi():
 
             # Step 4: Sort and return
             results = [item for item in results if item.get("aqi") is not None]
-            results.sort(key=lambda x: float(x.get("aqi", 0) or 0))
+            def _ranking_key(item):
+                aqi = float(item.get("aqi"))
+                distance = float(item.get("distance_km")) if item.get("distance_km") is not None else float("inf")
+                return aqi, distance, str(item.get("name", "")).lower()
+
+            results.sort(key=_ranking_key)
             center_city = _reverse_geocode_city(lat, lon)
 
             response = {

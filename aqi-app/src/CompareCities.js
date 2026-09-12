@@ -101,6 +101,56 @@ function CityCard({ cityData, color }) {
         </div>
       )}
 
+      {/* Monitor-equivalent location intelligence */}
+      {cityData.environmental_context && (
+        <div style={{ marginBottom: "1.5rem", padding: "1rem", borderRadius: "10px", background: "var(--color-bg-overlay)" }}>
+          <div className="eyebrow" style={{ marginBottom: "0.8rem" }}>City environmental intelligence</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "1rem" }}>
+            <div>
+              <div className="eyebrow">Pollution sources</div>
+              <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1rem", color: "var(--color-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                {(cityData.environmental_context.pollution_sources || []).map((source) => <li key={source.name}>{source.name}<br /><span style={{ color: "var(--color-text-muted)" }}>{source.evidence}</span></li>)}
+              </ul>
+            </div>
+            <div>
+              <div className="eyebrow">Industrial areas</div>
+              <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1rem", color: "var(--color-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                {(cityData.environmental_context.known_industrial_areas || []).map((area) => <li key={area.name}>{area.name}</li>)}
+              </ul>
+            </div>
+            <div>
+              <div className="eyebrow">Traffic corridors</div>
+              <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1rem", color: "var(--color-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                {(cityData.environmental_context.traffic_corridors || []).map((corridor) => <li key={corridor.name}>{corridor.name}</li>)}
+              </ul>
+            </div>
+            <div>
+              <div className="eyebrow">Health and visit advice</div>
+              <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1rem", color: "var(--color-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                {(cityData.environmental_context.health_recommendations || []).map((recommendation) => <li key={recommendation}>{recommendation}</li>)}
+              </ul>
+              <strong style={{ display: "block", marginTop: "0.5rem", color: "var(--color-text-primary)", fontSize: "0.78rem" }}>
+                <span style={{ fontWeight: 400 }}>Best time: {cityData.environmental_context.best_time_for_outdoor_visit || "Check current AQI"}</span>
+              </strong>
+            </div>
+          </div>
+          {cityData.environmental_context.tourism && (
+            <div style={{ marginTop: "1rem", paddingTop: "0.8rem", borderTop: "1px solid var(--color-border-subtle)" }}>
+              <div className="eyebrow">Best times to visit {cityData.city}</div>
+              <div style={{ marginTop: "0.35rem", color: "var(--color-text-primary)", fontSize: "0.82rem" }}>
+                <strong>Best season:</strong> {cityData.environmental_context.tourism.best_season || "Unavailable"}
+              </div>
+              <div style={{ marginTop: "0.35rem", color: "var(--color-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                {cityData.environmental_context.tourism.summary}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", marginTop: "0.55rem" }}>
+                {(cityData.environmental_context.tourism.best_months || []).map((month) => <span key={month.month_key} style={{ padding: "0.2rem 0.45rem", borderRadius: "999px", background: "var(--color-accent-glow)", color: "var(--color-accent)", fontSize: "0.7rem" }}>{month.month} · AQI {month.estimated_aqi}</span>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="divider" style={{ marginBottom: "1.25rem" }} />
 
       {/* Pollutants */}

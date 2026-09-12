@@ -127,7 +127,7 @@ export default function Navbar({ city, view, onGoHome, onNavigate, onSearch, sea
             flexShrink: 0,
           }}
         >
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
             <circle cx="14" cy="14" r="13" stroke="var(--color-accent)" strokeWidth="1.5" />
             <path
               d="M7 14 C7 10 10.5 7 14 7 C17.5 7 21 10 21 14"
@@ -148,7 +148,7 @@ export default function Navbar({ city, view, onGoHome, onNavigate, onSearch, sea
             style={{
               fontFamily: "var(--font-display)",
               fontWeight: 700,
-              fontSize: "1.125rem",
+              fontSize: "1.375rem",
               color: "var(--color-text-primary)",
               letterSpacing: "-0.02em",
             }}
@@ -179,6 +179,13 @@ export default function Navbar({ city, view, onGoHome, onNavigate, onSearch, sea
             style={{ background: "none", border: "none" }}
           >
             Compare
+          </button>
+          <button
+            className={`nav-link ${view === "understand-aqi" ? "active" : ""}`}
+            onClick={() => onNavigate("understand-aqi")}
+            style={{ background: "none", border: "none" }}
+          >
+            Understand AQI
           </button>
           <button
             className={`nav-link ${view === "architecture" ? "active" : ""}`}

@@ -343,7 +343,7 @@ body {
 
 /* ── Nav link ───────────────────────────────────────────── */
 .nav-link {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--color-text-muted);
   cursor: pointer;
   padding: 0.375rem 0.75rem;
@@ -628,6 +628,10 @@ body {
   gap: 1rem;
 }
 
+.nearby-ranking-panel-nearest {
+  grid-column: 1 / -1;
+}
+
 .nearby-ranking-panel {
   padding: 1rem;
   display: flex;
@@ -687,7 +691,7 @@ body {
 
 .nearby-locality-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto 64px minmax(0, 1fr);
   align-items: center;
   gap: 0.8rem;
   min-width: 0;
@@ -793,6 +797,15 @@ body {
   overflow: hidden;
 }
 
+.nearby-locality-composition {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .nearby-locality-meta {
   display: flex;
   flex-wrap: wrap;
@@ -822,9 +835,10 @@ body {
 .nearby-locality-right {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 0.55rem;
+  grid-column: 3;
   min-width: 0;
 }
 

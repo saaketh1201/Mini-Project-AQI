@@ -45,9 +45,8 @@ def test_report_compare_endpoint(client, monkeypatch):
 
     resp = client.get('/report/compare?city1=CityOne&city2=CityTwo')
     assert resp.status_code == 200
-    data = resp.get_json()
-    assert 'city1' in data and 'city2' in data
-    assert data['city1']['aqi'] == 75
+    assert resp.mimetype == 'application/pdf'
+    assert resp.data.startswith(b'%PDF-')
 
 
 def test_fetch_iqair_city_data_short_circuits_on_429(monkeypatch):

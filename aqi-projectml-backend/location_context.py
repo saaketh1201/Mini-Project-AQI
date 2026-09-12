@@ -3,6 +3,8 @@
 # Used to generate location-specific environmental insights
 
 import math
+import requests
+from functools import lru_cache
 
 # Known industrial zones, water bodies, and traffic corridors by city
 LOCATION_CONTEXT = {
@@ -166,12 +168,236 @@ LOCATION_CONTEXT = {
             "episodic_continental_transport": {"season": "spring", "source": "europe", "impact": "moderate"},
         },
     },
+    "chennai": {
+        "city_center": {"lat": 13.0827, "lon": 80.2707},
+        "industrial_zones": [
+            {"name": "Ambattur Industrial Estate", "lat": 13.1143, "lon": 80.1548, "type": "mixed"},
+            {"name": "Guindy Industrial Estate", "lat": 13.0067, "lon": 80.2206, "type": "mixed"},
+            {"name": "Manali Industrial Area", "lat": 13.1647, "lon": 80.2584, "type": "petrochemical"},
+            {"name": "Ennore Industrial Area", "lat": 13.2146, "lon": 80.3203, "type": "port and power"},
+            {"name": "Sriperumbudur Industrial Corridor", "lat": 12.9676, "lon": 79.9417, "type": "manufacturing"},
+        ],
+        "water_bodies": [
+            {"name": "Bay of Bengal", "lat": 13.0500, "lon": 80.2900, "type": "sea", "affects_humidity": True, "sea_breeze": True},
+            {"name": "Adyar River", "lat": 13.0120, "lon": 80.2550, "type": "river", "affects_dispersion": True},
+            {"name": "Cooum River", "lat": 13.0750, "lon": 80.2750, "type": "river", "affects_dispersion": True},
+            {"name": "Chembarambakkam Lake", "lat": 13.0100, "lon": 80.0600, "type": "lake"},
+            {"name": "Pulicat Lake", "lat": 13.4200, "lon": 80.3200, "type": "lake"},
+        ],
+        "traffic_corridors": [
+            {"name": "Chennai Outer Ring Road", "type": "arterial", "intensity": "very_high"},
+            {"name": "Poonamallee High Road", "type": "arterial", "intensity": "high"},
+            {"name": "OMR / Rajiv Gandhi Salai", "type": "arterial", "intensity": "high"},
+            {"name": "Anna Salai", "type": "arterial", "intensity": "very_high"},
+            {"name": "Chennai-Bengaluru Highway", "type": "highway", "intensity": "high"},
+        ],
+        "seasonal_factors": {"northeast_monsoon": {"season": "Oct-Dec", "effect": "rainfall_improves_particle_dispersion"}, "summer_sea_breeze": {"season": "Mar-Jun", "effect": "coastal_dispersion"}},
+    },
+    "kolkata": {
+        "city_center": {"lat": 22.5726, "lon": 88.3639},
+        "industrial_zones": [
+            {"name": "Taratala Industrial Area", "lat": 22.5005, "lon": 88.3038, "type": "mixed"},
+            {"name": "Garden Reach Industrial Area", "lat": 22.5320, "lon": 88.2850, "type": "port and engineering"},
+            {"name": "Howrah Industrial Belt", "lat": 22.5958, "lon": 88.2636, "type": "engineering"},
+            {"name": "Dankuni Industrial Area", "lat": 22.6700, "lon": 88.3000, "type": "manufacturing"},
+            {"name": "Budge Budge Industrial Area", "lat": 22.4700, "lon": 88.1800, "type": "petrochemical"},
+        ],
+        "water_bodies": [
+            {"name": "Hooghly River", "lat": 22.5700, "lon": 88.3400, "type": "river", "affects_dispersion": True},
+            {"name": "East Kolkata Wetlands", "lat": 22.5200, "lon": 88.4400, "type": "wetland"},
+            {"name": "Rabindra Sarobar", "lat": 22.5100, "lon": 88.3500, "type": "lake"},
+            {"name": "Salt Lake", "lat": 22.5958, "lon": 88.4190, "type": "lake"},
+            {"name": "Adi Ganga", "lat": 22.5000, "lon": 88.3600, "type": "canal"},
+        ],
+        "traffic_corridors": [
+            {"name": "EM Bypass", "type": "arterial", "intensity": "very_high"},
+            {"name": "VIP Road", "type": "arterial", "intensity": "high"},
+            {"name": "AJC Bose Road", "type": "arterial", "intensity": "very_high"},
+            {"name": "Durgapur Expressway", "type": "highway", "intensity": "high"},
+            {"name": "NH-12 / Jessore Road", "type": "highway", "intensity": "high"},
+        ],
+        "seasonal_factors": {"monsoon": {"season": "Jun-Sep", "effect": "rainfall_improves_dispersion"}, "winter_inversion": {"season": "Dec-Feb", "effect": "stagnant_air_can_trap_particles"}},
+    },
+    "bengaluru": {
+        "city_center": {"lat": 12.9716, "lon": 77.5946},
+        "industrial_zones": [
+            {"name": "Peenya Industrial Area", "lat": 13.0320, "lon": 77.5190, "type": "manufacturing"},
+            {"name": "Bommasandra Industrial Area", "lat": 12.8160, "lon": 77.6840, "type": "mixed"},
+            {"name": "Jigani Industrial Area", "lat": 12.7820, "lon": 77.6380, "type": "manufacturing"},
+            {"name": "Whitefield Industrial Area", "lat": 12.9698, "lon": 77.7500, "type": "technology and manufacturing"},
+            {"name": "Doddaballapur Industrial Area", "lat": 13.2920, "lon": 77.5370, "type": "textile and manufacturing"},
+        ],
+        "water_bodies": [
+            {"name": "Ulsoor Lake", "lat": 12.9830, "lon": 77.6200, "type": "lake"},
+            {"name": "Bellandur Lake", "lat": 12.9300, "lon": 77.6780, "type": "lake"},
+            {"name": "Varthur Lake", "lat": 12.9400, "lon": 77.7460, "type": "lake"},
+            {"name": "Hebbal Lake", "lat": 13.0350, "lon": 77.5920, "type": "lake"},
+            {"name": "Jakkur Lake", "lat": 13.0780, "lon": 77.6060, "type": "lake"},
+        ],
+        "traffic_corridors": [
+            {"name": "Outer Ring Road", "type": "arterial", "intensity": "very_high"},
+            {"name": "Hosur Road", "type": "highway", "intensity": "very_high"},
+            {"name": "Tumakuru Road", "type": "highway", "intensity": "high"},
+            {"name": "Bellary Road / Airport Road", "type": "highway", "intensity": "high"},
+            {"name": "Electronic City Road", "type": "arterial", "intensity": "very_high"},
+        ],
+        "seasonal_factors": {"monsoon": {"season": "Jun-Oct", "effect": "rainfall_improves_dispersion"}, "dry_season": {"season": "Jan-May", "effect": "dust_and_stagnation_can_increase_particles"}},
+    },
+    "bangalore": {},
+    "visakhapatnam": {
+        "city_center": {"lat": 17.6868, "lon": 83.2185},
+        "industrial_zones": [
+            {"name": "Visakhapatnam Steel Plant", "lat": 17.6130, "lon": 83.1880, "type": "steel"},
+            {"name": "Gajuwaka Industrial Area", "lat": 17.6860, "lon": 83.2150, "type": "heavy"},
+            {"name": "Parawada Industrial Area", "lat": 17.6900, "lon": 83.1000, "type": "pharmaceutical and chemical"},
+            {"name": "Kondakarla Industrial Area", "lat": 17.6500, "lon": 82.9800, "type": "manufacturing"},
+            {"name": "Visakhapatnam Port Industrial Area", "lat": 17.6900, "lon": 83.2800, "type": "port"},
+        ],
+        "water_bodies": [
+            {"name": "Bay of Bengal", "lat": 17.7000, "lon": 83.3000, "type": "sea", "affects_humidity": True, "sea_breeze": True},
+            {"name": "Kondakarla Ava", "lat": 17.5500, "lon": 82.9500, "type": "wetland"},
+            {"name": "Kambalakonda Lake", "lat": 17.7600, "lon": 83.2500, "type": "lake"},
+            {"name": "Meghadrigedda Reservoir", "lat": 17.8000, "lon": 83.2400, "type": "reservoir"},
+            {"name": "Mudasarlova Reservoir", "lat": 17.7500, "lon": 83.2700, "type": "reservoir"},
+        ],
+        "traffic_corridors": [
+            {"name": "NH-16", "type": "highway", "intensity": "very_high"},
+            {"name": "Gajuwaka Road", "type": "arterial", "intensity": "very_high"},
+            {"name": "NAD Junction Corridor", "type": "arterial", "intensity": "high"},
+            {"name": "Beach Road", "type": "arterial", "intensity": "high"},
+            {"name": "MVP Double Road", "type": "arterial", "intensity": "high"},
+        ],
+        "seasonal_factors": {"northeast_monsoon": {"season": "Oct-Dec", "effect": "rainfall_and_sea_breeze_aid_dispersion"}, "summer": {"season": "Mar-May", "effect": "heat_and_dust_can_increase_particles"}},
+    },
+    "pune": {
+        "city_center": {"lat": 18.5204, "lon": 73.8567},
+        "industrial_zones": [
+            {"name": "Bhosari MIDC", "lat": 18.6280, "lon": 73.8420, "type": "manufacturing"},
+            {"name": "Pimpri-Chinchwad Industrial Area", "lat": 18.6290, "lon": 73.8000, "type": "automotive"},
+            {"name": "Talegaon Industrial Area", "lat": 18.7350, "lon": 73.6750, "type": "manufacturing"},
+            {"name": "Ranjangaon Industrial Area", "lat": 18.7600, "lon": 74.2500, "type": "manufacturing"},
+            {"name": "Chakan Industrial Area", "lat": 18.7600, "lon": 73.8500, "type": "automotive"},
+        ],
+        "water_bodies": [
+            {"name": "Mula-Mutha River", "lat": 18.5200, "lon": 73.8800, "type": "river", "affects_dispersion": True},
+            {"name": "Pashan Lake", "lat": 18.5360, "lon": 73.7890, "type": "lake"},
+            {"name": "Khadakwasla Reservoir", "lat": 18.4420, "lon": 73.7750, "type": "reservoir"},
+            {"name": "Mulshi Lake", "lat": 18.4900, "lon": 73.5000, "type": "lake"},
+            {"name": "Pavana Lake", "lat": 18.7200, "lon": 73.4900, "type": "lake"},
+        ],
+        "traffic_corridors": [
+            {"name": "Pune-Mumbai Expressway", "type": "highway", "intensity": "very_high"},
+            {"name": "Pune-Nashik Highway", "type": "highway", "intensity": "high"},
+            {"name": "Nagar Road", "type": "arterial", "intensity": "very_high"},
+            {"name": "Hinjawadi-Maan Road", "type": "arterial", "intensity": "high"},
+            {"name": "Satara Road", "type": "arterial", "intensity": "high"},
+        ],
+        "seasonal_factors": {"monsoon": {"season": "Jun-Sep", "effect": "rainfall_improves_dispersion"}, "summer": {"season": "Mar-May", "effect": "dryness_and_dust_can_increase_particles"}},
+    },
 }
+
+
+@lru_cache(maxsize=128)
+def _fetch_osm_city_features(lat, lon):
+    """Fetch verified nearby industrial, road, and water features for uncovered cities."""
+    query = f"""
+    [out:json][timeout:12];
+    (
+    nwr(around:15000,{lat},{lon})[landuse=industrial][name];
+    nwr(around:15000,{lat},{lon})[industrial][name];
+    way(around:15000,{lat},{lon})[highway~\"^(motorway|trunk|primary|secondary)$\"][name];
+    nwr(around:15000,{lat},{lon})[natural=water][name];
+    nwr(around:15000,{lat},{lon})[water][name];
+    );
+    out center tags;
+    """
+    endpoints = (
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    )
+    for endpoint in endpoints:
+        try:
+            response = requests.post(
+                endpoint,
+                data=query,
+                timeout=12,
+                headers={"User-Agent": "Aeris environmental intelligence"},
+            )
+            response.raise_for_status()
+            return response.json().get("elements", [])
+        except Exception as exc:
+            print(f"OSM city feature lookup failed at {endpoint}: {exc}")
+        return []
+
+
+def _osm_feature_point(element):
+    center = element.get("center") or {}
+    return element.get("lat", center.get("lat")), element.get("lon", center.get("lon"))
+
+
+def _dynamic_city_features(lat, lon):
+    features = {"industrial_zones": [], "traffic_corridors": [], "water_bodies": []}
+    for element in _fetch_osm_city_features(round(float(lat), 4), round(float(lon), 4)):
+        tags = element.get("tags") or {}
+        name = tags.get("name") or tags.get("name:en")
+        if not name:
+            continue
+        feature_lat, feature_lon = _osm_feature_point(element)
+        distance = _haversine_distance(lat, lon, feature_lat, feature_lon) if feature_lat is not None and feature_lon is not None else None
+        if tags.get("landuse") == "industrial" or tags.get("industrial"):
+            features["industrial_zones"].append({
+                "name": name,
+                "type": tags.get("industrial") or "industrial area",
+                "distance_km": round(distance, 1) if distance is not None else None,
+                "source": "OpenStreetMap",
+            })
+        highway = tags.get("highway")
+        if highway in {"motorway", "trunk", "primary", "secondary"}:
+            features["traffic_corridors"].append({
+                "name": name,
+                "type": highway,
+                "intensity": "very_high" if highway in {"motorway", "trunk"} else "high",
+                "distance_km": round(distance, 1) if distance is not None else None,
+                "source": "OpenStreetMap",
+            })
+        if tags.get("natural") == "water" or tags.get("water"):
+            features["water_bodies"].append({
+                "name": name,
+                "type": tags.get("water") or "water body",
+                "distance_km": round(distance, 1) if distance is not None else None,
+                "source": "OpenStreetMap",
+            })
+
+    for key in features:
+        unique = {}
+        for item in features[key]:
+            unique[item["name"].strip().lower()] = item
+        features[key] = sorted(unique.values(), key=lambda item: item.get("distance_km") or float("inf"))
+    return features
+
+
+def get_city_environmental_context(city_name, lat, lon, minimum_features=5):
+    """Return curated context, supplemented by cached verified OSM features."""
+    context_data, _ = _get_context_data(city_name, lat, lon)
+    curated = {
+        "industrial_zones": list(context_data.get("industrial_zones", [])),
+        "traffic_corridors": list(context_data.get("traffic_corridors", [])),
+        "water_bodies": list(context_data.get("water_bodies", [])),
+        "seasonal_factors": context_data.get("seasonal_factors", {}),
+    }
+    if any(len(curated[key]) < minimum_features for key in ("industrial_zones", "traffic_corridors", "water_bodies")):
+        dynamic = _dynamic_city_features(lat, lon)
+        for key in ("industrial_zones", "traffic_corridors", "water_bodies"):
+            known = {item.get("name", "").strip().lower() for item in curated[key]}
+            curated[key].extend(item for item in dynamic[key] if item["name"].strip().lower() not in known)
+            curated[key] = curated[key][:minimum_features]
+    return curated
 
 def _normalize_city_key(city_name):
     if not city_name:
         return ""
-    return city_name.strip().lower().split(",")[0].strip()
+    key = city_name.strip().lower().split(",")[0].strip()
+    return {"bangalore": "bengaluru", "vizag": "visakhapatnam"}.get(key, key)
 
 
 def _find_nearest_known_city(lat, lon, max_distance_km=120):

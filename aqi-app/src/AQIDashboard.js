@@ -87,6 +87,79 @@ function HealthRecommendationsCard({ prescriptive, risk }) {
   );
 }
 
+function CityEnvironmentalContext({ context, city }) {
+  const sources = context?.pollution_sources || [];
+  const industrialAreas = context?.known_industrial_areas || [];
+  const trafficCorridors = context?.traffic_corridors || [];
+  const recommendations = context?.health_recommendations || [];
+  const tourism = context?.tourism || {};
+
+  const List = ({ items, empty }) => (
+    items.length > 0 ? (
+      <ul style={{ margin: "0.55rem 0 0", paddingLeft: "1.1rem", color: "var(--color-text-secondary)", lineHeight: 1.55, fontSize: "0.82rem" }}>
+        {items.map((item) => <li key={typeof item === "string" ? item : item.name} style={{ marginBottom: "0.35rem" }}>{typeof item === "string" ? item : item.name}</li>)}
+      </ul>
+    ) : <div style={{ marginTop: "0.55rem", color: "var(--color-text-muted)", fontSize: "0.82rem" }}>{empty}</div>
+  );
+
+  return (
+    <div className="aeris-card" style={{ padding: "1.35rem", marginBottom: "1.25rem" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "0.75rem", alignItems: "baseline" }}>
+        <div>
+          <div className="eyebrow">City environmental intelligence</div>
+          <h3 style={{ fontFamily: "var(--font-display)", color: "var(--color-text-primary)", margin: "0.35rem 0 0", fontSize: "1.15rem" }}>What may be shaping this air</h3>
+        </div>
+        <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Measured pollutants + mapped city context</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "1.25rem", marginTop: "1.2rem" }}>
+        <div>
+          <div className="eyebrow">Pollution sources</div>
+          <List items={sources.map((source) => `${source.name}: ${source.evidence}`)} empty="No strong source signature detected." />
+        </div>
+        <div>
+          <div className="eyebrow">Known industrial areas</div>
+          <List items={industrialAreas.map((area) => `${area.name}${area.distance_km != null ? ` · ${area.distance_km} km` : ""}`)} empty="No mapped industrial area nearby." />
+        </div>
+        <div>
+          <div className="eyebrow">Traffic corridors</div>
+          <List items={trafficCorridors.map((corridor) => `${corridor.name}${corridor.intensity ? ` · ${corridor.intensity.replace("_", " ")}` : ""}`)} empty="No mapped traffic corridor nearby." />
+        </div>
+        <div>
+          <div className="eyebrow">Health and outdoor plans</div>
+          <List items={recommendations} empty="Follow local AQI guidance." />
+          <div style={{ marginTop: "0.65rem", color: "var(--color-text-primary)", fontSize: "0.82rem", lineHeight: 1.5 }}><span>Best outdoor time: </span>{context?.best_time_for_outdoor_visit || "Check the AQI trend before going out."}</div>
+        </div>
+      </div>
+      <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid var(--color-border-subtle)" }}>
+        <div className="eyebrow">Best times to visit {city || "this area"}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", marginTop: "0.45rem" }}>
+          <strong style={{ color: "var(--color-text-primary)", fontSize: "0.92rem" }}>{tourism.available ? `Best season: ${tourism.best_season}` : "Best season: unavailable"}</strong>
+          {tourism.best_months?.map((month) => (
+            <span key={month.month_key} style={{ padding: "0.25rem 0.55rem", borderRadius: "999px", background: "var(--color-accent-glow)", color: "var(--color-accent)", fontSize: "0.75rem" }}>
+              {month.month} · AQI {month.estimated_aqi}
+            </span>
+          ))}
+        </div>
+        <div style={{ color: "var(--color-text-secondary)", fontSize: "0.82rem", lineHeight: 1.55, marginTop: "0.45rem" }}>{tourism.summary}</div>
+        {tourism.monthly_aqi?.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.5rem", marginTop: "0.8rem" }}>
+            {tourism.monthly_aqi.map((month) => (
+              <div key={month.month_key} style={{ padding: "0.5rem", background: "var(--color-bg-overlay)", borderRadius: "6px", textAlign: "center" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.68rem" }}>{month.month.slice(0, 3)}</div>
+                <div className="data-mono" style={{ color: getAQIColor(month.estimated_aqi), fontSize: "0.9rem", fontWeight: 700 }}>{month.estimated_aqi}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ color: "var(--color-text-muted)", fontSize: "0.7rem", marginTop: "0.6rem" }}>{tourism.method_note}</div>
+      </div>
+      <div style={{ marginTop: "1.1rem", paddingTop: "0.8rem", borderTop: "1px solid var(--color-border-subtle)", color: "var(--color-text-muted)", fontSize: "0.72rem" }}>
+        {context?.method_note || "Context is based on available mapped features and pollutant measurements."}
+      </div>
+    </div>
+  );
+}
+
 function WHOComparisonCard({ composition }) {
   const checks = Object.keys(WHO_GUIDELINES).filter((k) => ["pm2_5", "pm10", "no2"].includes(k)).map((k) => ({ key: k, val: composition?.[k], thr: WHO_GUIDELINES[k] }));
   return (
@@ -247,14 +320,19 @@ export default function AQIDashboard({ city, onCityChange }) {
   const [tab, setTab] = useState("overview");
   const [error, setError] = useState(null);
 
-  const cleanestAreas = useMemo(() => {
-    const localities = nearbyData?.localities || [];
-    return [...localities].sort((a, b) => (a.aqi || 0) - (b.aqi || 0)).slice(0, 5);
-  }, [nearbyData]);
-
-  const pollutedAreas = useMemo(() => {
-    const localities = nearbyData?.localities || [];
-    return [...localities].sort((a, b) => (b.aqi || 0) - (a.aqi || 0)).slice(0, 5);
+  const { cleanestAreas, pollutedAreas } = useMemo(() => {
+    const valid = (nearbyData?.localities || []).filter((locality) => Number.isFinite(Number(locality.aqi)));
+    const byAQI = [...valid].sort((a, b) => {
+      const aqiDelta = Number(a.aqi) - Number(b.aqi);
+      const aDistance = Number(a.distance_km);
+      const bDistance = Number(b.distance_km);
+      return aqiDelta || (Number.isFinite(aDistance) ? aDistance : Number.POSITIVE_INFINITY)
+        - (Number.isFinite(bDistance) ? bDistance : Number.POSITIVE_INFINITY);
+    });
+    return {
+      cleanestAreas: byAQI.slice(0, 5),
+      pollutedAreas: byAQI.slice(-5).reverse(),
+    };
   }, [nearbyData]);
 
   useEffect(() => {
@@ -336,6 +414,7 @@ export default function AQIDashboard({ city, onCityChange }) {
   const risk = analytics.risk || {};
   const aiSummary = analytics.summary || "Air quality conditions are being monitored in real time.";
   const kpis = analytics.kpis || {};
+  const environmentalContext = data.environmental_context || {};
   const contextText = typeof narrative.context === "string" ? narrative.context : (narrative.context ? "Environmental context information is available for this location." : "");
   const freshnessLabel = data.source === "IQAir AirVisual API" ? "IQAir" : data.source || "Live data";
   const freshnessAge = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "just now";
@@ -462,6 +541,7 @@ export default function AQIDashboard({ city, onCityChange }) {
             <HealthRecommendationsCard prescriptive={narrative.prescriptive} risk={risk} />
             <WHOComparisonCard composition={composition} />
           </div>
+          <CityEnvironmentalContext context={environmentalContext} city={data.city} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" }}>
             <div className="aeris-card animate-slide-up" style={{ padding: "1.5rem", gridColumn: "1 / -1" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>

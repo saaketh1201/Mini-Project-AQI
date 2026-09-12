@@ -7,6 +7,7 @@ import TopCities from "./TopCities";
 import Footer from "./Footer";
 import Navbar from "./Navbar";
 import ArchitecturePage from "./ArchitecturePage";
+import AQIUnderstandingPage from "./AQIUnderstandingPage";
 
 export default function App() {
   const [view, setView] = useState("landing");
@@ -92,6 +93,13 @@ export default function App() {
         {view === "architecture" && (
           <div className="animate-fade-in">
             <ArchitecturePage />
+            <Footer />
+          </div>
+        )}
+
+        {view === "understand-aqi" && (
+          <div className="animate-fade-in">
+            <AQIUnderstandingPage />
             <Footer />
           </div>
         )}

@@ -6,13 +6,34 @@ import { HYD_CENTER } from "./hyderabadFallback";
 // AQI helpers (pure — no hardcoded city data)
 // ─────────────────────────────────────────────────────────────────────────────
 function getAQIColor(aqi) {
-  if (!aqi) return "#3D6080";
-  if (aqi <= 50)  return "#22C55E";
-  if (aqi <= 100) return "#EAB308";
-  if (aqi <= 150) return "#F97316";
-  if (aqi <= 200) return "#EF4444";
-  if (aqi <= 300) return "#A855F7";
+  const value = Number(aqi);
+  if (!Number.isFinite(value)) return "#3D6080";
+  if (value <= 50)  return "#22C55E";
+  if (value <= 100) return "#EAB308";
+  if (value <= 150) return "#F97316";
+  if (value <= 200) return "#EF4444";
+  if (value <= 300) return "#A855F7";
   return "#7F1D1D";
+}
+
+function getNumericValue(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function formatAQI(value) {
+  const numeric = getNumericValue(value);
+  return numeric == null ? "—" : numeric.toFixed(Number.isInteger(numeric) ? 0 : 1);
+}
+
+function formatDistance(value) {
+  const numeric = getNumericValue(value);
+  return numeric == null ? "—" : `${numeric.toFixed(numeric < 10 ? 2 : 1)} km`;
+}
+
+function formatPollutant(value) {
+  const numeric = getNumericValue(value);
+  return numeric == null ? "—" : numeric.toFixed(1);
 }
 
 function getAQICategory(aqi) {
@@ -417,6 +438,7 @@ function LocalityCard({ locality, rank, variant }) {
     bestTime !== "—" ? `Best time: ${bestTime}` : null,
     riskGroup !== "—" ? `Risk group: ${riskGroup}` : null,
   ].filter(Boolean);
+  const composition = locality.composition || {};
 
   return (
     <div
@@ -437,7 +459,7 @@ function LocalityCard({ locality, rank, variant }) {
 
         {/* AQI circle */}
         <div className="nearby-aqi-circle" style={{ background: `${aqiColor}18`, borderColor: `${aqiColor}50` }}>
-          <span className="nearby-aqi-num data-mono" style={{ color: aqiColor }}>{locality.aqi}</span>
+          <span className="nearby-aqi-num data-mono" style={{ color: aqiColor }}>{formatAQI(locality.aqi)}</span>
           <span className="nearby-aqi-label">AQI</span>
         </div>
 
@@ -451,6 +473,9 @@ function LocalityCard({ locality, rank, variant }) {
             </div>
           </div>
           <div className="nearby-locality-summary">{summary}</div>
+          <div className="nearby-locality-composition">
+            PM2.5 {formatPollutant(composition.pm2_5)} · CO {formatPollutant(composition.co)} · O₃ {formatPollutant(composition.o3)} µg/m³
+          </div>
           {healthMeta.length > 0 && (
             <div className="nearby-locality-meta" style={{ marginBottom: "0.2rem" }}>
               {healthMeta.map((chip) => (
@@ -486,7 +511,7 @@ function LocalityCard({ locality, rank, variant }) {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/>
               </svg>
-              {locality.distance_km} km
+              {formatDistance(locality.distance_km)}
             </div>
           )}
           {/* Expand toggle */}
@@ -505,7 +530,7 @@ function LocalityCard({ locality, rank, variant }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RankingList — ordered list (cleanest or most polluted)
+// RankingList — ordered list (nearest, cleanest, or most polluted)
 // ─────────────────────────────────────────────────────────────────────────────
 function RankingList({ title, icon, localities, variant, emptyMsg }) {
   if (!localities || localities.length === 0) {
@@ -524,7 +549,7 @@ function RankingList({ title, icon, localities, variant, emptyMsg }) {
   }
 
   return (
-    <div className="nearby-ranking-panel aeris-card">
+    <div className={`nearby-ranking-panel aeris-card ${variant === "nearest" ? "nearby-ranking-panel-nearest" : ""}`}>
       <div className="nearby-ranking-header">
         <span className="nearby-ranking-icon">{icon}</span>
         <div>
@@ -579,13 +604,24 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
     requestLocation, loadHyderabadDemo,
   } = useNearbyAQI(propLat, propLon, propCity);
 
-  // Derive cleanest / most polluted lists from sorted localities
-  const { cleanest, mostPolluted } = useMemo(() => {
-    if (!localities || localities.length === 0) return { cleanest: [], mostPolluted: [] };
-    const sorted = [...localities].sort((a, b) => a.aqi - b.aqi);
+  // Ignore incomplete records so missing AQI never ranks as the cleanest value.
+  const { nearest, cleanest, mostPolluted } = useMemo(() => {
+    if (!localities || localities.length === 0) return { nearest: [], cleanest: [], mostPolluted: [] };
+    const valid = localities.filter((locality) => getNumericValue(locality.aqi) != null);
+    const byDistance = [...valid].sort((a, b) => {
+      const distanceDelta = (getNumericValue(a.distance_km) ?? Number.POSITIVE_INFINITY)
+        - (getNumericValue(b.distance_km) ?? Number.POSITIVE_INFINITY);
+      return distanceDelta || getNumericValue(a.aqi) - getNumericValue(b.aqi);
+    });
+    const byAQI = [...valid].sort((a, b) => {
+      const aqiDelta = getNumericValue(a.aqi) - getNumericValue(b.aqi);
+      return aqiDelta || ((getNumericValue(a.distance_km) ?? Number.POSITIVE_INFINITY)
+        - (getNumericValue(b.distance_km) ?? Number.POSITIVE_INFINITY));
+    });
     return {
-      cleanest: sorted.slice(0, 5),
-      mostPolluted: sorted.slice(-5).reverse(),
+      nearest: byDistance.slice(0, 5),
+      cleanest: byAQI.slice(0, 5),
+      mostPolluted: byAQI.slice(-5).reverse(),
     };
   }, [localities]);
 
@@ -599,7 +635,7 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
           <div className="eyebrow" style={{ marginBottom: "0.35rem" }}>Environmental Intelligence</div>
           <h3 className="nearby-module-title">Nearby AQI Ranking</h3>
           <p className="nearby-module-desc">
-            Discover, compare, and understand air quality across localities within 50 km of your position.
+            Discover, compare, and understand air quality across localities within 50 km of your position. Equal AQI values indicate the live model reports the same conditions for nearby areas.
           </p>
         </div>
         {centerCity && (
@@ -662,8 +698,9 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
           <div className="nearby-stats-bar aeris-card">
             {[
               { label: "Areas Analyzed", val: localities.length },
-              { label: "Cleanest AQI", val: cleanest[0]?.aqi ?? "—", color: getAQIColor(cleanest[0]?.aqi) },
-              { label: "Most Polluted AQI", val: mostPolluted[0]?.aqi ?? "—", color: getAQIColor(mostPolluted[0]?.aqi) },
+              { label: "Nearest", val: nearest[0]?.distance_km != null ? formatDistance(nearest[0].distance_km) : "—" },
+              { label: "Cleanest AQI", val: formatAQI(cleanest[0]?.aqi), color: getAQIColor(cleanest[0]?.aqi) },
+              { label: "Most Polluted AQI", val: formatAQI(mostPolluted[0]?.aqi), color: getAQIColor(mostPolluted[0]?.aqi) },
               {
                 label: "Data Source",
                 val: "Live data",
@@ -679,6 +716,13 @@ export default function NearbyAQIRanking({ lat: propLat, lon: propLon, city: pro
           </div>
 
           <div className="nearby-ranking-grid">
+            <RankingList
+              title="Nearest Areas"
+              icon="📍"
+              localities={nearest}
+              variant="nearest"
+              emptyMsg="No nearby areas with valid AQI data found."
+            />
             <RankingList
               title="Cleanest Areas Nearby"
               icon="🌿"

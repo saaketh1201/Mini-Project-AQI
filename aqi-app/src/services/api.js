@@ -8,12 +8,12 @@ const DEFAULT_BASE_URL = isProduction
 export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_BASE_URL;
 
 axios.defaults.baseURL = API_BASE_URL;
-axios.defaults.timeout = 15000;
+axios.defaults.timeout = 90000;
 axios.defaults.headers.common.Accept = 'application/json';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 90000,
   headers: { Accept: 'application/json' },
 });
 

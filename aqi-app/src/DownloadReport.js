@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "./services/api";
-import { createAerisReport, exportReportCsv } from "./reportUtils";
+import { exportReportCsv } from "./reportUtils";
 
 export default function DownloadReport({ city, reportData, buttonLabel = "Download Report", csvLabel = "Export CSV" }) {
   const [loading, setLoading] = useState(false);
@@ -27,22 +27,6 @@ export default function DownloadReport({ city, reportData, buttonLabel = "Downlo
     }
   };
 
-  const handleFrontendDownload = async () => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const doc = createAerisReport(reportData);
-      doc.save(`${reportData.city || city || "Environmental_Report"}.pdf`);
-    } catch (err) {
-      console.error("PDF export failed:", err);
-      if (city) {
-        await handleBackendDownload();
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCsvExport = () => {
     if (!reportData) return;
     const { url, filename } = exportReportCsv(reportData);
@@ -58,7 +42,7 @@ export default function DownloadReport({ city, reportData, buttonLabel = "Downlo
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
       <button
-        onClick={reportData ? handleFrontendDownload : handleBackendDownload}
+        onClick={handleBackendDownload}
         disabled={loading}
         className="aeris-btn-primary"
         style={{ fontSize: "0.875rem", opacity: loading ? 0.7 : 1 }}

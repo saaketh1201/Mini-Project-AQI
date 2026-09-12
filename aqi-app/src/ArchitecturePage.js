@@ -1,14 +1,14 @@
 import React from "react";
 
 const blocks = [
-  { title: "User", body: "City search, dashboard navigation, and comparison requests" },
-  { title: "React Frontend", body: "Interactive dashboard, charts, heatmap, and comparison experience" },
-  { title: "Flask API", body: "Routes for AQI, ranking, comparison, and report generation" },
-  { title: "Cache Layer", body: "TTL-based caching for geocoding and route responses" },
-  { title: "Background Scheduler", body: "Refreshes ranking and heatmap city data in the background" },
-  { title: "Data Providers", body: "IQAir, AQI.in, Open-Meteo, and fallback logic" },
-  { title: "Analytics Engine", body: "Pollutant analysis, forecasting, and ERS scoring" },
-  { title: "Decision Support", body: "Rule-based environmental summaries and KPI generation" },
+  { title: "City search", body: "Accepts a city or area, geocodes it, and starts a complete environmental analysis." },
+  { title: "AQI providers", body: "Combines configured live providers with Open-Meteo pollutant measurements and transparent source labels." },
+  { title: "Annual history", body: "Aggregates the previous 12 complete months of PM2.5 into monthly AQI estimates for tourism timing." },
+  { title: "Geographic context", body: "Uses curated city geography plus a cached OpenStreetMap fallback for industrial areas, traffic corridors, and water bodies." },
+  { title: "Analytics engine", body: "Calculates dominant pollutants, source signatures, trends, health guidance, and the Environmental Risk Score." },
+  { title: "City intelligence", body: "Presents pollution sources, factories, traffic corridors, water features, health advice, and best times to visit." },
+  { title: "Caching", body: "Stores complete city responses and heatmap snapshots so repeat searches are fast and provider load is controlled." },
+  { title: "Frontend experience", body: "React renders the dashboard, reports, comparison tools, heatmap, nearby rankings, and Understand AQI guide." },
 ];
 
 export default function ArchitecturePage() {
@@ -19,7 +19,7 @@ export default function ArchitecturePage() {
         Platform flow and engineering structure
       </h2>
       <p style={{ fontSize: "0.95rem", color: "var(--color-text-secondary)", lineHeight: 1.7, marginBottom: "1.5rem" }}>
-        The platform is structured as a layered environmental intelligence system: the frontend collects user context, the backend aggregates data, and the analytics layer transforms that data into comparison, forecasting, and decision-support outputs.
+        Aeris turns a searched location into a traceable environmental brief. A first uncached search may take up to 90 seconds while it gathers AQI, twelve months of history, geographic context, and tourism timing. The complete response is then cached for fast repeat visits.
       </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
@@ -33,10 +33,13 @@ export default function ArchitecturePage() {
       </div>
 
       <div className="aeris-card" style={{ marginTop: "1.5rem", padding: "1.25rem 1.4rem" }}>
-        <div className="eyebrow" style={{ marginBottom: "0.35rem" }}>Flow summary</div>
-        <div style={{ fontSize: "0.92rem", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
-          User requests flow into the React interface, are handled by the Flask API, cached for speed, enriched by background refresh jobs, and then passed through the analytics engine to produce AQI, risk, forecasting, and decision-support outputs.
-        </div>
+        <div className="eyebrow" style={{ marginBottom: "0.35rem" }}>Reliability principles</div>
+        <ul style={{ fontSize: "0.92rem", color: "var(--color-text-secondary)", lineHeight: 1.7, margin: 0, paddingLeft: "1.2rem" }}>
+          <li>Measured AQI and pollutant values are kept separate from inferred pollution sources.</li>
+          <li>Geographic names are shown only when available from curated or mapped data; the system does not invent factories or roads.</li>
+          <li>Tourism recommendations show the monthly AQI evidence and explain when history is incomplete.</li>
+          <li>Cached responses reduce repeat latency while preserving the source and update metadata.</li>
+        </ul>
       </div>
     </div>
   );

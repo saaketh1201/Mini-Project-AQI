@@ -1,39 +1,84 @@
 [
   {
-    "city": "Delhi",
-    "name": "Delhi",
-    "lat": 28.6139,
-    "lon": 77.209,
-    "aqi": 82,
+    "city": "Riyadh",
+    "name": "Riyadh",
+    "lat": 24.7136,
+    "lon": 46.6753,
+    "aqi": 230,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766276"
+    "updatedAt": "2026-09-12T03:35:41.031504"
   },
   {
-    "city": "Mumbai",
-    "name": "Mumbai",
-    "lat": 19.076,
-    "lon": 72.8777,
-    "aqi": 82,
+    "city": "Xi'an",
+    "name": "Xi'an",
+    "lat": 34.3416,
+    "lon": 108.9398,
+    "aqi": 153,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766295"
+    "updatedAt": "2026-09-12T03:35:38.594717"
   },
   {
-    "city": "Kolkata",
-    "name": "Kolkata",
-    "lat": 22.5726,
-    "lon": 88.3639,
-    "aqi": 82,
+    "city": "Dubai",
+    "name": "Dubai",
+    "lat": 25.2048,
+    "lon": 55.2708,
+    "aqi": 142,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766306"
+    "updatedAt": "2026-09-12T03:35:40.993428"
   },
   {
-    "city": "Chennai",
-    "name": "Chennai",
-    "lat": 13.0827,
-    "lon": 80.2707,
-    "aqi": 82,
+    "city": "Jakarta",
+    "name": "Jakarta",
+    "lat": -6.2088,
+    "lon": 106.8456,
+    "aqi": 129,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766311"
+    "updatedAt": "2026-09-12T03:35:38.602514"
+  },
+  {
+    "city": "Tehran",
+    "name": "Tehran",
+    "lat": 35.6892,
+    "lon": 51.389,
+    "aqi": 118,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:41.852714"
+  },
+  {
+    "city": "Beijing",
+    "name": "Beijing",
+    "lat": 39.9042,
+    "lon": 116.4074,
+    "aqi": 108,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.463696"
+  },
+  {
+    "city": "Chengdu",
+    "name": "Chengdu",
+    "lat": 30.5728,
+    "lon": 104.0668,
+    "aqi": 99,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:37.499739"
+  },
+  {
+    "city": "Johannesburg",
+    "name": "Johannesburg",
+    "lat": -26.2041,
+    "lon": 28.0473,
+    "aqi": 90,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:43.108170"
+  },
+  {
+    "city": "Seoul",
+    "name": "Seoul",
+    "lat": 37.5665,
+    "lon": 126.978,
+    "aqi": 83,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.676482"
   },
   {
     "city": "Hyderabad",
@@ -42,330 +87,285 @@
     "lon": 78.4867,
     "aqi": 82,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766317"
-  },
-  {
-    "city": "Bangalore",
-    "name": "Bangalore",
-    "lat": 12.9716,
-    "lon": 77.5946,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766321"
-  },
-  {
-    "city": "Lahore",
-    "name": "Lahore",
-    "lat": 31.5204,
-    "lon": 74.3587,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766326"
-  },
-  {
-    "city": "Karachi",
-    "name": "Karachi",
-    "lat": 24.8607,
-    "lon": 67.0011,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766335"
-  },
-  {
-    "city": "Dhaka",
-    "name": "Dhaka",
-    "lat": 23.8103,
-    "lon": 90.4125,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766341"
-  },
-  {
-    "city": "Kathmandu",
-    "name": "Kathmandu",
-    "lat": 27.7172,
-    "lon": 85.324,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766348"
-  },
-  {
-    "city": "Beijing",
-    "name": "Beijing",
-    "lat": 39.9042,
-    "lon": 116.4074,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766354"
-  },
-  {
-    "city": "Shanghai",
-    "name": "Shanghai",
-    "lat": 31.2304,
-    "lon": 121.4737,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766358"
-  },
-  {
-    "city": "Chengdu",
-    "name": "Chengdu",
-    "lat": 30.5728,
-    "lon": 104.0668,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766362"
+    "updatedAt": "2026-09-12T03:35:36.423089"
   },
   {
     "city": "Wuhan",
     "name": "Wuhan",
     "lat": 30.5928,
     "lon": 114.3055,
-    "aqi": 82,
+    "aqi": 81,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766366"
-  },
-  {
-    "city": "Xi'an",
-    "name": "Xi'an",
-    "lat": 34.3416,
-    "lon": 108.9398,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766370"
-  },
-  {
-    "city": "Tokyo",
-    "name": "Tokyo",
-    "lat": 35.6762,
-    "lon": 139.6503,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766379"
-  },
-  {
-    "city": "Seoul",
-    "name": "Seoul",
-    "lat": 37.5665,
-    "lon": 126.978,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766385"
-  },
-  {
-    "city": "Jakarta",
-    "name": "Jakarta",
-    "lat": -6.2088,
-    "lon": 106.8456,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766390"
-  },
-  {
-    "city": "Bangkok",
-    "name": "Bangkok",
-    "lat": 13.7563,
-    "lon": 100.5018,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766394"
-  },
-  {
-    "city": "Ho Chi Minh City",
-    "name": "Ho Chi Minh City",
-    "lat": 10.8231,
-    "lon": 106.6297,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766398"
-  },
-  {
-    "city": "Cairo",
-    "name": "Cairo",
-    "lat": 30.0444,
-    "lon": 31.2357,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766402"
-  },
-  {
-    "city": "Lagos",
-    "name": "Lagos",
-    "lat": 6.5244,
-    "lon": 3.3792,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766406"
-  },
-  {
-    "city": "Nairobi",
-    "name": "Nairobi",
-    "lat": -1.2864,
-    "lon": 36.8172,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766412"
-  },
-  {
-    "city": "Moscow",
-    "name": "Moscow",
-    "lat": 55.7558,
-    "lon": 37.6173,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766416"
-  },
-  {
-    "city": "London",
-    "name": "London",
-    "lat": 51.5072,
-    "lon": -0.1276,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766420"
-  },
-  {
-    "city": "Paris",
-    "name": "Paris",
-    "lat": 48.8566,
-    "lon": 2.3522,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766425"
-  },
-  {
-    "city": "Berlin",
-    "name": "Berlin",
-    "lat": 52.52,
-    "lon": 13.405,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766429"
-  },
-  {
-    "city": "Warsaw",
-    "name": "Warsaw",
-    "lat": 52.2297,
-    "lon": 21.0122,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766433"
-  },
-  {
-    "city": "Los Angeles",
-    "name": "Los Angeles",
-    "lat": 34.0522,
-    "lon": -118.2437,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766438"
-  },
-  {
-    "city": "New York",
-    "name": "New York",
-    "lat": 40.7128,
-    "lon": -74.006,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766442"
-  },
-  {
-    "city": "Mexico City",
-    "name": "Mexico City",
-    "lat": 19.4326,
-    "lon": -99.1332,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766446"
+    "updatedAt": "2026-09-12T03:35:37.564914"
   },
   {
     "city": "Santiago",
     "name": "Santiago",
     "lat": -33.4489,
     "lon": -70.6693,
-    "aqi": 82,
+    "aqi": 81,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766450"
-  },
-  {
-    "city": "São Paulo",
-    "name": "São Paulo",
-    "lat": -23.5505,
-    "lon": -46.6333,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766455"
-  },
-  {
-    "city": "Buenos Aires",
-    "name": "Buenos Aires",
-    "lat": -34.6037,
-    "lon": -58.3816,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766459"
-  },
-  {
-    "city": "Dubai",
-    "name": "Dubai",
-    "lat": 25.2048,
-    "lon": 55.2708,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766463"
-  },
-  {
-    "city": "Riyadh",
-    "name": "Riyadh",
-    "lat": 24.7136,
-    "lon": 46.6753,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766467"
-  },
-  {
-    "city": "Tehran",
-    "name": "Tehran",
-    "lat": 35.6892,
-    "lon": 51.389,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766471"
-  },
-  {
-    "city": "Istanbul",
-    "name": "Istanbul",
-    "lat": 41.0082,
-    "lon": 28.9784,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766476"
-  },
-  {
-    "city": "Singapore",
-    "name": "Singapore",
-    "lat": 1.3521,
-    "lon": 103.8198,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766480"
-  },
-  {
-    "city": "Johannesburg",
-    "name": "Johannesburg",
-    "lat": -26.2041,
-    "lon": 28.0473,
-    "aqi": 82,
-    "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766484"
+    "updatedAt": "2026-09-12T03:35:41.025780"
   },
   {
     "city": "Mexico City",
     "name": "Mexico City",
     "lat": 19.4326,
     "lon": -99.1332,
-    "aqi": 82,
+    "aqi": 80,
     "source": "Open-Meteo Air Quality API",
-    "updatedAt": "2026-09-09T15:51:57.766489"
+    "updatedAt": "2026-09-12T03:35:40.858859"
+  },
+  {
+    "city": "Mexico City",
+    "name": "Mexico City",
+    "lat": 19.4326,
+    "lon": -99.1332,
+    "aqi": 80,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:43.059227"
+  },
+  {
+    "city": "Cairo",
+    "name": "Cairo",
+    "lat": 30.0444,
+    "lon": 31.2357,
+    "aqi": 78,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.683840"
+  },
+  {
+    "city": "Los Angeles",
+    "name": "Los Angeles",
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "aqi": 78,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:40.839634"
+  },
+  {
+    "city": "Shanghai",
+    "name": "Shanghai",
+    "lat": 31.2304,
+    "lon": 121.4737,
+    "aqi": 74,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.433445"
+  },
+  {
+    "city": "Moscow",
+    "name": "Moscow",
+    "lat": 55.7558,
+    "lon": 37.6173,
+    "aqi": 73,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.723924"
+  },
+  {
+    "city": "Singapore",
+    "name": "Singapore",
+    "lat": 1.3521,
+    "lon": 103.8198,
+    "aqi": 73,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:42.930430"
+  },
+  {
+    "city": "Delhi",
+    "name": "Delhi",
+    "lat": 28.6139,
+    "lon": 77.209,
+    "aqi": 71,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.406071"
+  },
+  {
+    "city": "Karachi",
+    "name": "Karachi",
+    "lat": 24.8607,
+    "lon": 67.0011,
+    "aqi": 70,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.417833"
+  },
+  {
+    "city": "Chennai",
+    "name": "Chennai",
+    "lat": 13.0827,
+    "lon": 80.2707,
+    "aqi": 66,
+    "source": "IQAir AirVisual API",
+    "updatedAt": "2026-09-12T03:35:35.307669"
+  },
+  {
+    "city": "Bangkok",
+    "name": "Bangkok",
+    "lat": 13.7563,
+    "lon": 100.5018,
+    "aqi": 65,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.746136"
+  },
+  {
+    "city": "Lahore",
+    "name": "Lahore",
+    "lat": 31.5204,
+    "lon": 74.3587,
+    "aqi": 61,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.469414"
+  },
+  {
+    "city": "Bangalore",
+    "name": "Bangalore",
+    "lat": 12.9716,
+    "lon": 77.5946,
+    "aqi": 60,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.482834"
+  },
+  {
+    "city": "Mumbai",
+    "name": "Mumbai",
+    "lat": 19.076,
+    "lon": 72.8777,
+    "aqi": 59,
+    "source": "IQAir AirVisual API",
+    "updatedAt": "2026-09-12T03:35:35.302533"
+  },
+  {
+    "city": "Tokyo",
+    "name": "Tokyo",
+    "lat": 35.6762,
+    "lon": 139.6503,
+    "aqi": 57,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.610860"
+  },
+  {
+    "city": "São Paulo",
+    "name": "São Paulo",
+    "lat": -23.5505,
+    "lon": -46.6333,
+    "aqi": 57,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:41.019593"
+  },
+  {
+    "city": "Ho Chi Minh City",
+    "name": "Ho Chi Minh City",
+    "lat": 10.8231,
+    "lon": 106.6297,
+    "aqi": 56,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.751892"
+  },
+  {
+    "city": "Warsaw",
+    "name": "Warsaw",
+    "lat": 52.2297,
+    "lon": 21.0122,
+    "aqi": 56,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:40.823789"
+  },
+  {
+    "city": "New York",
+    "name": "New York",
+    "lat": 40.7128,
+    "lon": -74.006,
+    "aqi": 53,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:40.895031"
+  },
+  {
+    "city": "Lagos",
+    "name": "Lagos",
+    "lat": 6.5244,
+    "lon": 3.3792,
+    "aqi": 52,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.730446"
+  },
+  {
+    "city": "London",
+    "name": "London",
+    "lat": 51.5072,
+    "lon": -0.1276,
+    "aqi": 44,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:39.680439"
+  },
+  {
+    "city": "Dhaka",
+    "name": "Dhaka",
+    "lat": 23.8103,
+    "lon": 90.4125,
+    "aqi": 41,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.442125"
+  },
+  {
+    "city": "Kathmandu",
+    "name": "Kathmandu",
+    "lat": 27.7172,
+    "lon": 85.324,
+    "aqi": 41,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.487202"
+  },
+  {
+    "city": "Berlin",
+    "name": "Berlin",
+    "lat": 52.52,
+    "lon": 13.405,
+    "aqi": 38,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:40.757608"
+  },
+  {
+    "city": "Istanbul",
+    "name": "Istanbul",
+    "lat": 41.0082,
+    "lon": 28.9784,
+    "aqi": 32,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:42.004904"
+  },
+  {
+    "city": "Paris",
+    "name": "Paris",
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "aqi": 31,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:39.779052"
+  },
+  {
+    "city": "Kolkata",
+    "name": "Kolkata",
+    "lat": 22.5726,
+    "lon": 88.3639,
+    "aqi": 30,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:36.450101"
+  },
+  {
+    "city": "Nairobi",
+    "name": "Nairobi",
+    "lat": -1.2864,
+    "lon": 36.8172,
+    "aqi": 17,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:38.759596"
+  },
+  {
+    "city": "Buenos Aires",
+    "name": "Buenos Aires",
+    "lat": -34.6037,
+    "lon": -58.3816,
+    "aqi": 17,
+    "source": "Open-Meteo Air Quality API",
+    "updatedAt": "2026-09-12T03:35:40.972074"
   }
 ]

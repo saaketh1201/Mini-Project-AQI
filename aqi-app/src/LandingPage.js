@@ -178,13 +178,13 @@ export default function LandingPage({ onSearch, theme, toggleTheme }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-          <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+          <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
             <circle cx="14" cy="14" r="13" stroke="var(--color-accent)" strokeWidth="1.5" />
             <path d="M7 14 C7 10 10.5 7 14 7 C17.5 7 21 10 21 14" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
             <circle cx="14" cy="14" r="2.5" fill="var(--color-accent)" />
             <path d="M14 11.5 L14 7" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.0625rem", color: "var(--color-text-primary)", letterSpacing: "-0.02em" }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.25rem", color: "var(--color-text-primary)", letterSpacing: "-0.02em" }}>
             aeris
           </span>
         </div>
