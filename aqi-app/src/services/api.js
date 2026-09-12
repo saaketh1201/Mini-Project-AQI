@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const DEFAULT_BASE_URL = isProduction
-  ? 'https://aqi-backend-74f1.onrender.com'
+  ? 'https://mini-project-aqi-murex.vercel.app'
   : 'http://localhost:5000';
 
 export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_BASE_URL;

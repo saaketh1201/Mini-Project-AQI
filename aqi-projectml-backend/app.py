@@ -1173,6 +1173,13 @@ def compare_cities():
 
     def fetch(city):
         try:
+            cache_key = f"aqi:{city.strip().lower()}"
+            cached_payload = CACHE.get(cache_key)
+            if isinstance(cached_payload, dict):
+                cached_result = dict(cached_payload)
+                cached_result.setdefault("category", aqi_category(cached_result.get("aqi")))
+                return cached_result
+
             lat, lon = get_city_coords(city)
             if not lat or not lon:
                 return {"error": f"Location '{city}' not found"}
@@ -1213,7 +1220,7 @@ def compare_cities():
             ai_summary = build_ai_summary(components, aqi_value, weather, risk, city_name=city, lat=lat, lon=lon)
             kpis = build_dashboard_kpis(aqi_value, risk.get("score", 0), city_name=city)
 
-            return {
+            result = {
                 "city": city,
                 "lat": lat,
                 "lon": lon,
@@ -1233,6 +1240,8 @@ def compare_cities():
                 "environmental_context_version": ENVIRONMENTAL_CONTEXT_VERSION,
                 "updatedAt": datetime.utcnow().isoformat(),
             }
+            CACHE[cache_key] = result
+            return result
         except Exception as e:
             return {"error": f"Failed to fetch data for {city}: {str(e)}"}
 
