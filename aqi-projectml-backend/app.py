@@ -71,6 +71,12 @@ else:
 
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
+
+@app.route("/", methods=["GET"])
+def health_check():
+    return jsonify({"service": "AQI backend", "status": "ok"})
+
+
 # Server-side TTL cache (5 minutes)
 CACHE = cachetools.TTLCache(maxsize=1000, ttl=300)
 
