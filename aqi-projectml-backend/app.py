@@ -1155,6 +1155,16 @@ def aqi_ranking():
                     data["name"] = ranking_names[normalized]
                     results.append(data)
 
+        if not results:
+            snapshot = _build_global_heatmap_snapshot()
+            ranking_names = {city.strip().lower(): city for city in RANKING_CITIES}
+            for item in snapshot:
+                normalized = str(item.get("name") or item.get("city") or "").strip().lower()
+                if normalized in ranking_names and item.get("aqi") is not None:
+                    data = dict(item)
+                    data["name"] = ranking_names[normalized]
+                    results.append(data)
+
         # Sort by live AQI descending and return the top 20 cities.
         results = [item for item in results if item.get("aqi") is not None]
         results.sort(key=lambda x: float(x.get("aqi", 0) or 0), reverse=True)
@@ -1165,7 +1175,7 @@ def aqi_ranking():
     fut = EXECUTOR.submit(_build_ranking)
     IN_FLIGHT[cache_key] = fut
     try:
-        payload = fut.result(timeout=15)
+        payload = fut.result(timeout=90)
         return jsonify(payload)
     except Exception as e:
         if cache_key in CACHE:
