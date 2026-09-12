@@ -8,5 +8,6 @@ pandas
 prophet
 scikit-learn
 Flask-Compress
+cachetools
 pytest
 requests-mock
