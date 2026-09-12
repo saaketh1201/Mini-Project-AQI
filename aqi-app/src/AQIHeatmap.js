@@ -1,9 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { HeatmapLayer } from "react-leaflet-heatmap-layer-v3";
+import "leaflet.heat";
 import { getHeatmap } from "./services/api";
+
+function HeatmapLayer({ points, radius, blur, gradient }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const layer = L.heatLayer(
+      points.map((point) => [point.lat, point.lon, point.intensity]),
+      { radius, blur, max: 1, gradient }
+    ).addTo(map);
+
+    return () => map.removeLayer(layer);
+  }, [map, points, radius, blur, gradient]);
+
+  return null;
+}
 
 function getAQIColor(aqi) {
   if (aqi <= 50)  return "#22C55E";
