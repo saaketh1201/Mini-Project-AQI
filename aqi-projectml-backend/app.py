@@ -1144,6 +1144,17 @@ def aqi_ranking():
                     data["name"] = city
                     results.append(data)
 
+        # Serverless imports do not start the long-running collector thread.
+        # Reuse the persisted heatmap snapshot so rankings are still available.
+        if not results:
+            ranking_names = {city.strip().lower(): city for city in RANKING_CITIES}
+            for item in GLOBAL_HEATMAP_CACHE:
+                normalized = str(item.get("name") or item.get("city") or "").strip().lower()
+                if normalized in ranking_names and item.get("aqi") is not None:
+                    data = dict(item)
+                    data["name"] = ranking_names[normalized]
+                    results.append(data)
+
         # Sort by live AQI descending and return the top 20 cities.
         results = [item for item in results if item.get("aqi") is not None]
         results.sort(key=lambda x: float(x.get("aqi", 0) or 0), reverse=True)
